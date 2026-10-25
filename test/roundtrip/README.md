@@ -109,9 +109,11 @@ mutable-global lookup.
 
 Once a reader/writer API is specified, add an adapter that calls it directly;
 retain the legacy adapter as diagnostic history. Add top-level atoms,
-arbitrary dictionary keys, nested/empty tables, signed-zero/NaN checks under
-the agreed policy, long escaped-string boundaries and a non-executing rejection
-corpus for calls, names, trailing forms and resource-limit attacks. Missing
+arbitrary dictionary keys, distinct empty collection/schema cases, signed-zero
+sign-bit checks, existing typed-null checks and rejection of out-of-domain
+infinity input under the agreed policy, long escaped-string boundaries and a
+non-executing rejection corpus for calls, names, trailing forms and
+resource-limit attacks. Missing
 reader capabilities should be reported, not replaced by application eval.
 Convert reduced failures to upstream regression tests with independent
 expected types/contents. Keep printer fixes separate from changes to legacy

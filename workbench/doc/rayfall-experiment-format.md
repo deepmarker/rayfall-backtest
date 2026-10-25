@@ -162,3 +162,12 @@ The [proposed v1 type/identity/limit tables](rayfall-data-contract-v1.md)
 make those decisions reviewable. Numerical budgets and signed-zero behavior
 are marked as proposals; neither they nor cross-version compatibility are
 claimed as upstream guarantees.
+
+The [subsequent review](https://github.com/RayforceDB/rayforce/issues/994#issuecomment-6398920257)
+corrects the infinity promise: raw imported infinity bits do not establish a
+supported F64 language value. The revised draft proposes rejecting out-of-domain
+nonfinite input, checking signed zero via sign bits, preserving explicit empty
+schemas, intrinsic constructor operations, allocator-rounded budget accounting
+and failure-atomic symbol staging/commit. Successful-read intern growth still
+requires a host admission/lifetime policy; the per-read allocation budget is
+not a process-RSS cap. These revisions remain proposals for upstream agreement.
