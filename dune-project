@@ -1,0 +1,21 @@
+(lang dune 3.21)
+(name rayfall-backtest)
+(generate_opam_files true)
+(source (github deepmarker/rayfall-backtest))
+(license ISC)
+(authors "Vincent Bernardoff")
+(maintainers "Vincent Bernardoff")
+(package
+ (name rayfall-backtest)
+ (synopsis "Rayfall backtester model, native saved runs and Async IPC reader")
+ (depends
+  (ocaml (>= 5.1))
+  (core (and (>= v0.17) (< v0.18)))
+  (core_unix (and (>= v0.17) (< v0.18)))
+  (async (and (>= v0.17) (< v0.18)))
+  yojson digestif (ppx_jane (and (>= v0.17) (< v0.18)))
+  rayforce-ipc rayforce-ipc-async))
+(package
+ (name rayfall-backtest-gui)
+ (synopsis "Native desktop workbench for Rayfall backtests")
+ (depends rayfall-backtest imguiml-ft ctypes ctypes-foreign))

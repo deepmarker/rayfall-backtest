@@ -1,0 +1,2 @@
+[ perf record: Woken up 4 times to write data ]
+[ perf record: Captured and wrote 2.606 MB data/audit-profiles/kernel-hourly.data (21555 samples) ]

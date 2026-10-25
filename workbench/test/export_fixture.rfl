@@ -1,0 +1,5 @@
+;; Run from backtest. Recreate the small GUI schema/data fixture.
+(load "test/fixture1.rfl")
+(load "report.rfl")
+(bt_write_outputs "../workbench/test/fixtures/fixture1/")
+(.csv.write (bt_attribution) "../workbench/test/fixtures/fixture1/attribution.csv")

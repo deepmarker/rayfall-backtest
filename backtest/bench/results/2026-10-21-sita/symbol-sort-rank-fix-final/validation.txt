@@ -1,0 +1,6 @@
+make test-release TEST_FILTER=sort TEST_CORES=0
+  sort/sorted_symbol_rank_check                         PASS  3.82 ms
+=== 175 of 175 passed (0 skipped, 0 failed) ===
+make test-release TEST_FILTER=sort TEST_CORES=4
+  sort/sorted_symbol_rank_check                         PASS  7.57 ms
+=== 175 of 175 passed (0 skipped, 0 failed) ===

@@ -1,0 +1,75 @@
+;; Fixture 1: hand-calculated walkthrough in doc/contracts.md.
+;; Run from backtest:  rayforce test/fixture1.rfl
+
+(load "bt.rfl")
+(load "test/assert.rfl")
+
+(set dir "test/fixture1/")
+(set instruments (read-csv [SYM I64 I64 I64] (concat dir "instruments.csv")))
+(set bars (read-csv [TIMESTAMP SYM I64 I64] (concat dir "bars.csv")))
+(set targets (read-csv [TIMESTAMP SYM I64] (concat dir "targets.csv")))
+(set cfg {cash0: 100000 fee_ppm: 1000 start: 2026.01.01D00:00:00.000 period: 0D01:00:00 steps: 4
+          max_weight_ppm: 1000000000 max_gross_ppm: 1000000000 buy_policy: 'REJECT})
+
+(bt_run cfg instruments bars targets)
+
+(set T0 2026.01.01D00:00:00.000)
+(set T1 2026.01.01D01:00:00.000)
+(set T2 2026.01.01D02:00:00.000)
+(set T3 2026.01.01D03:00:00.000)
+(set T4 2026.01.01D04:00:00.000)
+
+;; ---- orders and lifecycle
+(check_col "orders" bt.orders 'order_id [0 1 2 3 4 5])
+(check_col "orders" bt.orders 'ts (enlist T1 T1 T2 T2 T3 T3))
+(check_col "orders" bt.orders 'sym [A B A B A B])
+(check_col "orders" bt.orders 'side [BUY BUY SELL BUY BUY BUY])
+(check_col "orders" bt.orders 'qty [500 95 300 100 200 50])
+(check_col "orders" bt.orders 'pos_before [0 0 500 0 200 100])
+
+(set fin (select {from: bt.order_events where: (!= event 'SUBMITTED)}))
+(check_col "final" fin 'order_id [0 1 2 3 4 5])
+(check_col "final" fin 'event [FILLED REJECTED FILLED FILLED FILLED REJECTED])
+(check "reject reasons" (at (select {from: fin where: (== event 'REJECTED)}) 'reason)
+       [INSUFFICIENT_CASH NO_PRICE])
+(check "event seq dense" (at bt.order_events 'seq)
+       (asc (at bt.order_events 'seq)))
+
+;; ---- fills
+(check_col "fills" bt.fills 'order_id [0 2 3 4])
+(check_col "fills" bt.fills 'price [103 99 52 105])
+(check_col "fills" bt.fills 'notional [51500 29700 52000 21000])
+(check_col "fills" bt.fills 'fee [52 30 52 21])
+(check_col "fills" bt.fills 'basis_removed [0 30900 0 0])
+(check_col "fills" bt.fills 'realized [0 -1200 0 0])
+
+;; ---- equity snapshots (pre-trade at each boundary)
+(check_col "equity" bt.equity 'ts (enlist T0 T1 T2 T3 T4))
+(check_col "equity" bt.equity 'cash [100000 100000 48448 26066 5045])
+(check_col "equity" bt.equity 'mv [0 0 50500 70800 92400])
+(check_col "equity" bt.equity 'equity [100000 100000 98948 96866 97445])
+(check_col "equity" bt.equity 'realized [0 0 0 -1200 -1200])
+(check_col "equity" bt.equity 'fees [0 0 52 134 155])
+(check_col "equity" bt.equity 'unrealized [0 0 -1000 -1800 -1200])
+
+;; ---- positions at T4: B is marked stale from T3
+(set p4 (select {from: bt.positions where: (== ts T4)}))
+(check_col "pos T4" p4 'sym [A B])
+(check_col "pos T4" p4 'qty [400 100])
+(check_col "pos T4" p4 'basis [41600 52000])
+(check_col "pos T4" p4 'mark [106 50])
+(check_col "pos T4" p4 'mark_ts (enlist T4 T3))
+(set p0 (select {from: bt.positions where: (== ts T0)}))
+(check "pos T0 no marks" (all (nil? (at p0 'mark))) true)
+
+;; ---- invariants
+(set e (at bt.equity 'equity))
+(check "equity identity"
+       (- e 100000)
+       (- (+ (at bt.equity 'realized) (at bt.equity 'unrealized)) (at bt.equity 'fees)))
+(check "ledger cash = final cash" (+ 100000 (sum (at bt.ledger 'cash_delta))) bt.cash)
+(check "ledger qty = final qty"
+       (at (select {from: bt.ledger by: {sym: sym} q: (sum qty_delta)}) 'q) bt.qty)
+(check "fees reconcile" (sum (at bt.fills 'fee)) bt.fees)
+
+(println "PASS fixture1")

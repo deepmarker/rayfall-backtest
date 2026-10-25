@@ -1,0 +1,15 @@
+{
+  "pr": "https://github.com/RayforceDB/rayforce/pull/943",
+  "commit": "6217b31d076d8e7beaf8635286f6033135e5de1f",
+  "base": "d7153e72af7b766f17d38483a594f5976b824a57",
+  "warmups_per_variant": 1,
+  "measurements_per_variant": 3,
+  "seed": 22,
+  "sha256": {
+    "baseline": "5525dd24748e356d4c1fa52948024a6fd5117d962daf80bc22941e60ada3cd73",
+    "candidate": "59438b7b0452b8a408a6a54df714d06aec6c5ff0241e6abab71c944f0dbdc896",
+    "report": "4c554167072b6c5fe168d043630f3b54232b8dc90a584a41c612ccc69e0a9a4b",
+    "measured_join_source": "6a6b8ae6867075776de17b6f3a7d649784814234859b46e1cea2049d06d6f806"
+  },
+  "note": "Measured join source predates a subsequent gather comment clarification only. Production behavior is unchanged. Binary build metadata predates the review-fix commit."
+}

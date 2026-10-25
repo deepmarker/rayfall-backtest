@@ -1,0 +1,12 @@
+;; Standalone reproducer: no data files or backtester required.
+;; rayforce sorted-check-standalone.rfl -- -numeric 0   ; symbols
+;; rayforce sorted-check-standalone.rfl -- -numeric 1   ; lexical integer ranks
+(set args (at (.sys.args) 'user))
+(set n 2630400)
+(set ids (til n))
+(set syms (asc (as 'SYM (map (fn [i] (format "s%" i)) (til 100)))))
+(set ts (as 'TIMESTAMP (div ids 100)))
+(set key (if (== (at args 'numeric) "1") (% ids 100) (take syms n)))
+(set b (table [ts sym] (list ts key)))
+(set elapsed (timeit (set sorted (xasc b [ts sym]))))
+(println (format "rows=% sort_ms=%" (count sorted) elapsed))

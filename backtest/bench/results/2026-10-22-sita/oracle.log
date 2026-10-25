@@ -1,0 +1,4 @@
+make: Entering directory '/home/vb/code/dm/rayfall/backtest'
+RAYFORCE=/usr/sbin/rayforce python3 -I test/oracle.py
+PASS independent oracle: 50 seeds, 3 instruments, 16 steps, REJECT
+make: Leaving directory '/home/vb/code/dm/rayfall/backtest'

@@ -1,0 +1,1389 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 31K of event 'cycles:u'
+# Event count (approx.): 105563680319
+#
+# Children      Self  Command   Shared Object         Symbol                          
+# ........  ........  ........  ....................  ................................
+#
+    84.29%     0.24%  rayforce  rayforce              [.] pool_run_steal
+            |          
+             --84.05%--pool_run_steal
+                       |          
+                        --84.05%--pool_exec (inlined)
+                                  |          
+                                   --84.05%--ray_qstats_task_end (inlined)
+                                             |          
+                                             |--61.22%--sorted_check_fn
+                                             |          |          
+                                             |           --61.09%--ray_sym_str
+                                             |                     |          
+                                             |                      --61.01%--sym_lock (inlined)
+                                             |          
+                                             |--7.30%--multi_gather_fn
+                                             |          
+                                             |--4.13%--par_binary_fn
+                                             |          |          
+                                             |           --4.12%--binary_range
+                                             |          
+                                              --1.48%--csv_parse_fn
+
+    84.06%     0.00%  rayforce  rayforce              [.] pool_exec (inlined)
+            |
+            ---pool_exec (inlined)
+               |          
+                --84.05%--ray_qstats_task_end (inlined)
+                          |          
+                          |--61.22%--sorted_check_fn
+                          |          |          
+                          |           --61.09%--ray_sym_str
+                          |                     |          
+                          |                      --61.01%--sym_lock (inlined)
+                          |          
+                          |--7.30%--multi_gather_fn
+                          |          
+                          |--4.13%--par_binary_fn
+                          |          |          
+                          |           --4.12%--binary_range
+                          |          
+                           --1.48%--csv_parse_fn
+
+    84.05%     0.00%  rayforce  rayforce              [.] ray_qstats_task_end (inlined)
+            |
+            ---ray_qstats_task_end (inlined)
+               |          
+               |--61.22%--0x5563125e9927
+               |          |          
+               |           --61.09%--0x5563126bf2ad
+               |                     |          
+               |                      --61.01%--0x5563126bf2ad
+               |          
+               |--7.30%--0x5563123c1928
+               |          
+               |--4.13%--0x55631241c42f
+               |          |          
+               |           --4.12%--0x55631242f4e2
+               |          
+                --1.48%--0x55631227f5e3
+
+    77.14%     0.00%  rayforce  libc.so.6             [.] 0x00007f436eddf72c
+            |
+            ---0x7f436eddf72c
+               |          
+                --77.14%--0x7f436ed57042
+                          |          
+                           --77.14%--thread_trampoline
+                                     |          
+                                      --77.14%--worker_loop
+                                                |          
+                                                 --77.11%--pool_run_steal
+                                                           |          
+                                                            --76.98%--pool_exec (inlined)
+                                                                      |          
+                                                                       --76.97%--ray_qstats_task_end (inlined)
+                                                                                 |          
+                                                                                 |--56.35%--sorted_check_fn
+                                                                                 |          |          
+                                                                                 |           --56.26%--ray_sym_str
+                                                                                 |                     |          
+                                                                                 |                      --56.18%--sym_lock (inlined)
+                                                                                 |          
+                                                                                 |--6.62%--multi_gather_fn
+                                                                                 |          
+                                                                                 |--3.73%--par_binary_fn
+                                                                                 |          |          
+                                                                                 |           --3.72%--binary_range
+                                                                                 |          
+                                                                                  --1.35%--csv_parse_fn
+
+    77.14%     0.00%  rayforce  libc.so.6             [.] 0x00007f436ed57042
+            |
+            ---0x7f436ed57042
+               |          
+                --77.14%--thread_trampoline
+                          |          
+                           --77.14%--worker_loop
+                                     |          
+                                      --77.11%--pool_run_steal
+                                                |          
+                                                 --76.98%--pool_exec (inlined)
+                                                           |          
+                                                            --76.97%--ray_qstats_task_end (inlined)
+                                                                      |          
+                                                                      |--56.35%--sorted_check_fn
+                                                                      |          |          
+                                                                      |           --56.26%--ray_sym_str
+                                                                      |                     |          
+                                                                      |                      --56.18%--sym_lock (inlined)
+                                                                      |          
+                                                                      |--6.62%--multi_gather_fn
+                                                                      |          
+                                                                      |--3.73%--par_binary_fn
+                                                                      |          |          
+                                                                      |           --3.72%--binary_range
+                                                                      |          
+                                                                       --1.35%--csv_parse_fn
+
+    77.14%     0.00%  rayforce  rayforce              [.] thread_trampoline
+            |
+            ---thread_trampoline
+               |          
+                --77.14%--worker_loop
+                          |          
+                           --77.11%--pool_run_steal
+                                     |          
+                                      --76.98%--pool_exec (inlined)
+                                                |          
+                                                 --76.97%--ray_qstats_task_end (inlined)
+                                                           |          
+                                                           |--56.35%--sorted_check_fn
+                                                           |          |          
+                                                           |           --56.26%--ray_sym_str
+                                                           |                     |          
+                                                           |                      --56.18%--sym_lock (inlined)
+                                                           |          
+                                                           |--6.62%--multi_gather_fn
+                                                           |          
+                                                           |--3.73%--par_binary_fn
+                                                           |          |          
+                                                           |           --3.72%--binary_range
+                                                           |          
+                                                            --1.35%--csv_parse_fn
+
+    77.14%     0.00%  rayforce  rayforce              [.] worker_loop
+            |          
+             --77.14%--worker_loop
+                       |          
+                        --77.11%--pool_run_steal
+                                  |          
+                                   --76.98%--pool_exec (inlined)
+                                             |          
+                                              --76.97%--ray_qstats_task_end (inlined)
+                                                        |          
+                                                        |--56.35%--sorted_check_fn
+                                                        |          |          
+                                                        |           --56.26%--ray_sym_str
+                                                        |                     |          
+                                                        |                      --56.18%--sym_lock (inlined)
+                                                        |          
+                                                        |--6.62%--multi_gather_fn
+                                                        |          
+                                                        |--3.73%--par_binary_fn
+                                                        |          |          
+                                                        |           --3.72%--binary_range
+                                                        |          
+                                                         --1.35%--csv_parse_fn
+
+    61.60%    61.54%  rayforce  rayforce              [.] ray_sym_str
+            |          
+            |--56.20%--0x7f436eddf72c
+            |          0x7f436ed57042
+            |          thread_trampoline
+            |          worker_loop
+            |          pool_run_steal
+            |          pool_exec (inlined)
+            |          ray_qstats_task_end (inlined)
+            |          sorted_check_fn
+            |          ray_sym_str
+            |          |          
+            |           --56.12%--sym_lock (inlined)
+            |          
+             --5.34%--_start
+                       __libc_start_main
+                       0x7f436ece6781
+                       main
+                       ray_repl_run_file
+                       ray_eval
+                       ray_do_fn
+                       ray_eval
+                       ray_eval
+                       ray_do_fn
+                       ray_eval
+                       ray_set_fn
+                       ray_eval
+                       ray_timeit_fn
+                       ray_is_lazy (inlined)
+                       ray_eval
+                       call_lambda_impl
+                       vm_exec (inlined)
+                       vm_exec_rows
+                       |          
+                        --5.24%--vm_call_binary
+                                  |          
+                                   --4.83%--sort_table_by_keys
+                                             pool_dispatch_at
+                                             dispatch_round (inlined)
+                                             pool_run_window
+                                             pool_main_run_steal (inlined)
+                                             pool_run_steal
+                                             pool_exec (inlined)
+                                             ray_qstats_task_end (inlined)
+                                             sorted_check_fn
+                                             ray_sym_str
+                                             sym_lock (inlined)
+
+    61.51%     0.00%  rayforce  rayforce              [.] sym_lock (inlined)
+            |
+            ---sym_lock (inlined)
+
+    61.22%     0.12%  rayforce  rayforce              [.] sorted_check_fn
+            |          
+             --61.10%--sorted_check_fn
+                       |          
+                        --61.09%--ray_sym_str
+                                  |          
+                                   --61.01%--sym_lock (inlined)
+
+    22.86%     0.00%  rayforce  libc.so.6             [.] __libc_start_main
+            |
+            ---__libc_start_main
+               0x7f436ece6781
+               main
+               |          
+                --22.85%--ray_repl_run_file
+                          ray_eval
+                          ray_do_fn
+                          ray_eval
+                          |          
+                           --22.56%--ray_eval
+                                     ray_do_fn
+                                     ray_eval
+                                     ray_set_fn
+                                     ray_eval
+                                     ray_timeit_fn
+                                     ray_is_lazy (inlined)
+                                     ray_eval
+                                     |          
+                                     |--17.35%--call_lambda_impl
+                                     |          vm_exec (inlined)
+                                     |          |          
+                                     |           --17.29%--vm_exec_rows
+                                     |                     |          
+                                     |                     |--14.15%--vm_call_binary
+                                     |                     |          |          
+                                     |                     |          |--4.95%--sort_table_by_keys
+                                     |                     |          |          |          
+                                     |                     |          |           --4.90%--pool_dispatch_at
+                                     |                     |          |                     dispatch_round (inlined)
+                                     |                     |          |                     pool_run_window
+                                     |                     |          |                     pool_main_run_steal (inlined)
+                                     |                     |          |                     |          
+                                     |                     |          |                      --4.88%--pool_run_steal
+                                     |                     |          |                                |          
+                                     |                     |          |                                 --4.87%--pool_exec (inlined)
+                                     |                     |          |                                           ray_qstats_task_end (inlined)
+                                     |                     |          |                                           sorted_check_fn
+                                     |                     |          |                                           |          
+                                     |                     |          |                                            --4.83%--ray_sym_str
+                                     |                     |          |                                                      sym_lock (inlined)
+                                     |                     |          |          
+                                     |                     |          |--3.74%--ray_find_fn
+                                     |                     |          |          |          
+                                     |                     |          |          |--2.29%--hashset_find_xrow
+                                     |                     |          |          |          
+                                     |                     |          |           --1.30%--hashset_insert
+                                     |                     |          |          
+                                     |                     |           --2.97%--atomic_map_binary_op
+                                     |                     |          
+                                     |                      --1.74%--ray_eval
+                                     |          
+                                      --5.20%--ray_do_fn
+                                                ray_eval
+                                                |          
+                                                |--2.80%--ray_eval
+                                                |          call_lambda_impl
+                                                |          vm_exec (inlined)
+                                                |          vm_exec_rows
+                                                |          |          
+                                                |           --1.27%--ray_ungroup_fn
+                                                |                     |          
+                                                |                      --1.24%--ray_raze_fn
+                                                |                                ray_concat_fn
+                                                |          
+                                                 --2.40%--call_lambda_impl
+                                                           |          
+                                                            --2.40%--vm_exec (inlined)
+                                                                      vm_exec_rows
+                                                                      |          
+                                                                       --1.12%--ray_eval
+
+    22.86%     0.00%  rayforce  libc.so.6             [.] 0x00007f436ece6781
+            |
+            ---0x7f436ece6781
+               main
+               |          
+                --22.85%--ray_repl_run_file
+                          ray_eval
+                          ray_do_fn
+                          ray_eval
+                          |          
+                           --22.56%--ray_eval
+                                     ray_do_fn
+                                     ray_eval
+                                     ray_set_fn
+                                     ray_eval
+                                     ray_timeit_fn
+                                     ray_is_lazy (inlined)
+                                     ray_eval
+                                     |          
+                                     |--17.35%--call_lambda_impl
+                                     |          vm_exec (inlined)
+                                     |          |          
+                                     |           --17.29%--vm_exec_rows
+                                     |                     |          
+                                     |                     |--14.15%--vm_call_binary
+                                     |                     |          |          
+                                     |                     |          |--4.95%--sort_table_by_keys
+                                     |                     |          |          |          
+                                     |                     |          |           --4.90%--pool_dispatch_at
+                                     |                     |          |                     dispatch_round (inlined)
+                                     |                     |          |                     pool_run_window
+                                     |                     |          |                     pool_main_run_steal (inlined)
+                                     |                     |          |                     |          
+                                     |                     |          |                      --4.88%--pool_run_steal
+                                     |                     |          |                                |          
+                                     |                     |          |                                 --4.87%--pool_exec (inlined)
+                                     |                     |          |                                           ray_qstats_task_end (inlined)
+                                     |                     |          |                                           sorted_check_fn
+                                     |                     |          |                                           |          
+                                     |                     |          |                                            --4.83%--ray_sym_str
+                                     |                     |          |                                                      sym_lock (inlined)
+                                     |                     |          |          
+                                     |                     |          |--3.74%--ray_find_fn
+                                     |                     |          |          |          
+                                     |                     |          |          |--2.29%--hashset_find_xrow
+                                     |                     |          |          |          
+                                     |                     |          |           --1.30%--hashset_insert
+                                     |                     |          |          
+                                     |                     |           --2.97%--atomic_map_binary_op
+                                     |                     |          
+                                     |                      --1.74%--ray_eval
+                                     |          
+                                      --5.20%--ray_do_fn
+                                                ray_eval
+                                                |          
+                                                |--2.80%--ray_eval
+                                                |          call_lambda_impl
+                                                |          vm_exec (inlined)
+                                                |          vm_exec_rows
+                                                |          |          
+                                                |           --1.27%--ray_ungroup_fn
+                                                |                     |          
+                                                |                      --1.24%--ray_raze_fn
+                                                |                                ray_concat_fn
+                                                |          
+                                                 --2.40%--call_lambda_impl
+                                                           |          
+                                                            --2.40%--vm_exec (inlined)
+                                                                      vm_exec_rows
+                                                                      |          
+                                                                       --1.12%--ray_eval
+
+    22.86%     0.00%  rayforce  rayforce              [.] main
+            |          
+             --22.57%--0x5563126d67ed
+                       0x55631225871f
+                       0x5563122b53f6
+                       0x5563122be00e
+                       0x5563122b55e5
+                       |          
+                        --22.56%--0x5563122b53f6
+                                  0x5563122be00e
+                                  0x5563122b55e5
+                                  0x5563122bdb5a
+                                  0x5563122b53f6
+                                  0x55631236a1be
+                                  0x55631236a1be
+                                  0x5563122b5522
+                                  |          
+                                  |--17.35%--0x5563122c012d
+                                  |          0x5563122c012d
+                                  |          |          
+                                  |           --17.29%--0x5563122c75ea
+                                  |                     |          
+                                  |                     |--14.15%--0x5563122cb949
+                                  |                     |          |          
+                                  |                     |          |--4.95%--0x5563125ea124
+                                  |                     |          |          |          
+                                  |                     |          |           --4.90%--0x55631226f2e3
+                                  |                     |          |                     0x55631226f2e3
+                                  |                     |          |                     0x556312270ec5
+                                  |                     |          |                     0x556312270ec5
+                                  |                     |          |                     |          
+                                  |                     |          |                      --4.88%--0x556312270b7f
+                                  |                     |          |                                |          
+                                  |                     |          |                                 --4.87%--0x556312270b7f
+                                  |                     |          |                                           0x556312270b7f
+                                  |                     |          |                                           0x5563125e9927
+                                  |                     |          |                                           |          
+                                  |                     |          |                                            --4.83%--0x5563126bf2ad
+                                  |                     |          |                                                      0x5563126bf2ad
+                                  |                     |          |          
+                                  |                     |          |--3.74%--0x55631239da6a
+                                  |                     |          |          |          
+                                  |                     |          |          |--2.29%--0x5563123955b3
+                                  |                     |          |          |          
+                                  |                     |          |           --1.30%--0x5563123930db
+                                  |                     |          |          
+                                  |                     |           --2.97%--0x5563122b8953
+                                  |                     |          
+                                  |                      --1.74%--0x5563122b53f6
+                                  |          
+                                   --5.20%--0x5563122be00e
+                                             0x5563122b5522
+                                             |          
+                                             |--2.80%--0x5563122b5522
+                                             |          0x5563122c012d
+                                             |          0x5563122c012d
+                                             |          0x5563122c75ea
+                                             |          |          
+                                             |           --1.27%--0x55631237a154
+                                             |                     |          
+                                             |                      --1.24%--0x556312379bf4
+                                             |                                0x5563123777eb
+                                             |          
+                                              --2.40%--0x5563122bffdb
+                                                        |          
+                                                         --2.40%--0x5563122c012d
+                                                                   0x5563122c92b0
+                                                                   |          
+                                                                    --1.12%--0x5563122b53f6
+
+    22.85%     0.00%  rayforce  rayforce              [.] ray_repl_run_file
+            |
+            ---ray_repl_run_file
+               ray_eval
+               ray_do_fn
+               |          
+                --22.56%--ray_eval
+                          ray_eval
+                          ray_do_fn
+                          ray_eval
+                          ray_set_fn
+                          ray_eval
+                          ray_timeit_fn
+                          ray_is_lazy (inlined)
+                          ray_eval
+                          |          
+                          |--17.35%--call_lambda_impl
+                          |          vm_exec (inlined)
+                          |          |          
+                          |           --17.29%--vm_exec_rows
+                          |                     |          
+                          |                     |--14.15%--vm_call_binary
+                          |                     |          |          
+                          |                     |          |--4.95%--sort_table_by_keys
+                          |                     |          |          |          
+                          |                     |          |           --4.90%--pool_dispatch_at
+                          |                     |          |                     dispatch_round (inlined)
+                          |                     |          |                     pool_run_window
+                          |                     |          |                     pool_main_run_steal (inlined)
+                          |                     |          |                     |          
+                          |                     |          |                      --4.88%--pool_run_steal
+                          |                     |          |                                |          
+                          |                     |          |                                 --4.87%--pool_exec (inlined)
+                          |                     |          |                                           ray_qstats_task_end (inlined)
+                          |                     |          |                                           sorted_check_fn
+                          |                     |          |                                           |          
+                          |                     |          |                                            --4.83%--ray_sym_str
+                          |                     |          |                                                      sym_lock (inlined)
+                          |                     |          |          
+                          |                     |          |--3.74%--ray_find_fn
+                          |                     |          |          |          
+                          |                     |          |          |--2.29%--hashset_find_xrow
+                          |                     |          |          |          
+                          |                     |          |           --1.30%--hashset_insert
+                          |                     |          |          
+                          |                     |           --2.97%--atomic_map_binary_op
+                          |                     |          
+                          |                      --1.74%--ray_eval
+                          |          
+                           --5.20%--ray_do_fn
+                                     ray_eval
+                                     |          
+                                     |--2.80%--ray_eval
+                                     |          call_lambda_impl
+                                     |          vm_exec (inlined)
+                                     |          vm_exec_rows
+                                     |          |          
+                                     |           --1.27%--ray_ungroup_fn
+                                     |                     |          
+                                     |                      --1.24%--ray_raze_fn
+                                     |                                ray_concat_fn
+                                     |          
+                                      --2.40%--call_lambda_impl
+                                                |          
+                                                 --2.40%--vm_exec (inlined)
+                                                           vm_exec_rows
+                                                           |          
+                                                            --1.12%--ray_eval
+
+    22.85%     0.04%  rayforce  rayforce              [.] ray_eval
+            |          
+             --22.81%--ray_eval
+                       ray_do_fn
+                       ray_eval
+                       |          
+                        --22.52%--ray_eval
+                                  ray_do_fn
+                                  ray_eval
+                                  ray_set_fn
+                                  ray_eval
+                                  ray_timeit_fn
+                                  ray_is_lazy (inlined)
+                                  ray_eval
+                                  |          
+                                  |--17.31%--call_lambda_impl
+                                  |          vm_exec (inlined)
+                                  |          |          
+                                  |           --17.25%--vm_exec_rows
+                                  |                     |          
+                                  |                     |--14.15%--vm_call_binary
+                                  |                     |          |          
+                                  |                     |          |--4.95%--sort_table_by_keys
+                                  |                     |          |          |          
+                                  |                     |          |           --4.90%--pool_dispatch_at
+                                  |                     |          |                     dispatch_round (inlined)
+                                  |                     |          |                     pool_run_window
+                                  |                     |          |                     pool_main_run_steal (inlined)
+                                  |                     |          |                     |          
+                                  |                     |          |                      --4.88%--pool_run_steal
+                                  |                     |          |                                |          
+                                  |                     |          |                                 --4.87%--pool_exec (inlined)
+                                  |                     |          |                                           ray_qstats_task_end (inlined)
+                                  |                     |          |                                           sorted_check_fn
+                                  |                     |          |                                           |          
+                                  |                     |          |                                            --4.83%--ray_sym_str
+                                  |                     |          |                                                      sym_lock (inlined)
+                                  |                     |          |          
+                                  |                     |          |--3.74%--ray_find_fn
+                                  |                     |          |          |          
+                                  |                     |          |          |--2.29%--hashset_find_xrow
+                                  |                     |          |          |          
+                                  |                     |          |           --1.30%--hashset_insert
+                                  |                     |          |          
+                                  |                     |           --2.97%--atomic_map_binary_op
+                                  |                     |          
+                                  |                      --1.70%--ray_eval
+                                  |          
+                                   --5.20%--ray_do_fn
+                                             ray_eval
+                                             |          
+                                             |--2.80%--ray_eval
+                                             |          call_lambda_impl
+                                             |          vm_exec (inlined)
+                                             |          vm_exec_rows
+                                             |          |          
+                                             |           --1.27%--ray_ungroup_fn
+                                             |                     |          
+                                             |                      --1.24%--ray_raze_fn
+                                             |                                ray_concat_fn
+                                             |          
+                                              --2.40%--call_lambda_impl
+                                                        |          
+                                                         --2.40%--vm_exec (inlined)
+                                                                   vm_exec_rows
+                                                                   |          
+                                                                    --1.12%--ray_eval
+
+    22.85%     0.00%  rayforce  rayforce              [.] ray_do_fn
+            |
+            ---ray_do_fn
+               ray_eval
+               |          
+                --22.56%--ray_eval
+                          ray_do_fn
+                          ray_eval
+                          ray_set_fn
+                          ray_eval
+                          ray_timeit_fn
+                          ray_is_lazy (inlined)
+                          ray_eval
+                          |          
+                          |--17.35%--call_lambda_impl
+                          |          vm_exec (inlined)
+                          |          |          
+                          |           --17.29%--vm_exec_rows
+                          |                     |          
+                          |                     |--14.15%--vm_call_binary
+                          |                     |          |          
+                          |                     |          |--4.95%--sort_table_by_keys
+                          |                     |          |          |          
+                          |                     |          |           --4.90%--pool_dispatch_at
+                          |                     |          |                     dispatch_round (inlined)
+                          |                     |          |                     pool_run_window
+                          |                     |          |                     pool_main_run_steal (inlined)
+                          |                     |          |                     |          
+                          |                     |          |                      --4.88%--pool_run_steal
+                          |                     |          |                                |          
+                          |                     |          |                                 --4.87%--pool_exec (inlined)
+                          |                     |          |                                           ray_qstats_task_end (inlined)
+                          |                     |          |                                           sorted_check_fn
+                          |                     |          |                                           |          
+                          |                     |          |                                            --4.83%--ray_sym_str
+                          |                     |          |                                                      sym_lock (inlined)
+                          |                     |          |          
+                          |                     |          |--3.74%--ray_find_fn
+                          |                     |          |          |          
+                          |                     |          |          |--2.29%--hashset_find_xrow
+                          |                     |          |          |          
+                          |                     |          |           --1.30%--hashset_insert
+                          |                     |          |          
+                          |                     |           --2.97%--atomic_map_binary_op
+                          |                     |          
+                          |                      --1.74%--ray_eval
+                          |          
+                           --5.20%--ray_do_fn
+                                     ray_eval
+                                     |          
+                                     |--2.80%--ray_eval
+                                     |          call_lambda_impl
+                                     |          vm_exec (inlined)
+                                     |          vm_exec_rows
+                                     |          |          
+                                     |           --1.27%--ray_ungroup_fn
+                                     |                     |          
+                                     |                      --1.24%--ray_raze_fn
+                                     |                                ray_concat_fn
+                                     |          
+                                      --2.40%--call_lambda_impl
+                                                |          
+                                                 --2.40%--vm_exec (inlined)
+                                                           vm_exec_rows
+                                                           |          
+                                                            --1.12%--ray_eval
+
+    22.85%     0.00%  rayforce  rayforce              [.] ray_set_fn
+            |
+            ---ray_set_fn
+               |          
+                --22.83%--ray_eval
+                          |          
+                           --22.82%--ray_timeit_fn
+                                     ray_is_lazy (inlined)
+                                     ray_eval
+                                     |          
+                                     |--17.35%--call_lambda_impl
+                                     |          vm_exec (inlined)
+                                     |          |          
+                                     |           --17.29%--vm_exec_rows
+                                     |                     |          
+                                     |                     |--14.15%--vm_call_binary
+                                     |                     |          |          
+                                     |                     |          |--4.95%--sort_table_by_keys
+                                     |                     |          |          |          
+                                     |                     |          |           --4.90%--pool_dispatch_at
+                                     |                     |          |                     dispatch_round (inlined)
+                                     |                     |          |                     pool_run_window
+                                     |                     |          |                     pool_main_run_steal (inlined)
+                                     |                     |          |                     |          
+                                     |                     |          |                      --4.88%--pool_run_steal
+                                     |                     |          |                                |          
+                                     |                     |          |                                 --4.87%--pool_exec (inlined)
+                                     |                     |          |                                           ray_qstats_task_end (inlined)
+                                     |                     |          |                                           sorted_check_fn
+                                     |                     |          |                                           |          
+                                     |                     |          |                                            --4.83%--ray_sym_str
+                                     |                     |          |                                                      sym_lock (inlined)
+                                     |                     |          |          
+                                     |                     |          |--3.74%--ray_find_fn
+                                     |                     |          |          |          
+                                     |                     |          |          |--2.29%--hashset_find_xrow
+                                     |                     |          |          |          
+                                     |                     |          |           --1.30%--hashset_insert
+                                     |                     |          |          
+                                     |                     |           --2.97%--atomic_map_binary_op
+                                     |                     |          
+                                     |                      --1.74%--ray_eval
+                                     |          
+                                      --5.47%--ray_do_fn
+                                                ray_eval
+                                                |          
+                                                |--2.80%--ray_eval
+                                                |          call_lambda_impl
+                                                |          vm_exec (inlined)
+                                                |          vm_exec_rows
+                                                |          |          
+                                                |           --1.27%--ray_ungroup_fn
+                                                |                     |          
+                                                |                      --1.24%--ray_raze_fn
+                                                |                                ray_concat_fn
+                                                |          
+                                                 --2.40%--call_lambda_impl
+                                                           |          
+                                                            --2.40%--vm_exec (inlined)
+                                                                      vm_exec_rows
+                                                                      |          
+                                                                       --1.12%--ray_eval
+
+    22.82%     0.00%  rayforce  rayforce              [.] ray_timeit_fn
+            |          
+             --22.82%--ray_timeit_fn
+                       ray_is_lazy (inlined)
+                       ray_eval
+                       |          
+                       |--17.35%--call_lambda_impl
+                       |          vm_exec (inlined)
+                       |          |          
+                       |           --17.28%--vm_exec_rows
+                       |                     |          
+                       |                     |--14.15%--vm_call_binary
+                       |                     |          |          
+                       |                     |          |--4.95%--sort_table_by_keys
+                       |                     |          |          |          
+                       |                     |          |           --4.90%--pool_dispatch_at
+                       |                     |          |                     dispatch_round (inlined)
+                       |                     |          |                     pool_run_window
+                       |                     |          |                     pool_main_run_steal (inlined)
+                       |                     |          |                     |          
+                       |                     |          |                      --4.88%--pool_run_steal
+                       |                     |          |                                |          
+                       |                     |          |                                 --4.87%--pool_exec (inlined)
+                       |                     |          |                                           ray_qstats_task_end (inlined)
+                       |                     |          |                                           sorted_check_fn
+                       |                     |          |                                           |          
+                       |                     |          |                                            --4.83%--ray_sym_str
+                       |                     |          |                                                      sym_lock (inlined)
+                       |                     |          |          
+                       |                     |          |--3.74%--ray_find_fn
+                       |                     |          |          |          
+                       |                     |          |          |--2.29%--hashset_find_xrow
+                       |                     |          |          |          
+                       |                     |          |           --1.30%--hashset_insert
+                       |                     |          |          
+                       |                     |           --2.97%--atomic_map_binary_op
+                       |                     |          
+                       |                      --1.73%--ray_eval
+                       |          
+                        --5.47%--ray_do_fn
+                                  ray_eval
+                                  |          
+                                  |--2.80%--ray_eval
+                                  |          call_lambda_impl
+                                  |          vm_exec (inlined)
+                                  |          vm_exec_rows
+                                  |          |          
+                                  |           --1.27%--ray_ungroup_fn
+                                  |                     |          
+                                  |                      --1.24%--ray_raze_fn
+                                  |                                ray_concat_fn
+                                  |          
+                                   --2.40%--call_lambda_impl
+                                             |          
+                                              --2.40%--vm_exec (inlined)
+                                                        vm_exec_rows
+                                                        |          
+                                                         --1.12%--ray_eval
+
+    22.82%     0.00%  rayforce  rayforce              [.] ray_is_lazy (inlined)
+            |
+            ---ray_is_lazy (inlined)
+               ray_eval
+               |          
+               |--17.35%--call_lambda_impl
+               |          vm_exec (inlined)
+               |          |          
+               |           --17.29%--vm_exec_rows
+               |                     |          
+               |                     |--14.15%--vm_call_binary
+               |                     |          |          
+               |                     |          |--4.95%--sort_table_by_keys
+               |                     |          |          |          
+               |                     |          |           --4.90%--pool_dispatch_at
+               |                     |          |                     dispatch_round (inlined)
+               |                     |          |                     pool_run_window
+               |                     |          |                     pool_main_run_steal (inlined)
+               |                     |          |                     |          
+               |                     |          |                      --4.88%--pool_run_steal
+               |                     |          |                                |          
+               |                     |          |                                 --4.87%--pool_exec (inlined)
+               |                     |          |                                           ray_qstats_task_end (inlined)
+               |                     |          |                                           sorted_check_fn
+               |                     |          |                                           |          
+               |                     |          |                                            --4.83%--ray_sym_str
+               |                     |          |                                                      sym_lock (inlined)
+               |                     |          |          
+               |                     |          |--3.74%--ray_find_fn
+               |                     |          |          |          
+               |                     |          |          |--2.29%--hashset_find_xrow
+               |                     |          |          |          
+               |                     |          |           --1.30%--hashset_insert
+               |                     |          |          
+               |                     |           --2.97%--atomic_map_binary_op
+               |                     |          
+               |                      --1.74%--ray_eval
+               |          
+                --5.47%--ray_do_fn
+                          ray_eval
+                          |          
+                          |--2.80%--ray_eval
+                          |          call_lambda_impl
+                          |          vm_exec (inlined)
+                          |          vm_exec_rows
+                          |          |          
+                          |           --1.27%--ray_ungroup_fn
+                          |                     |          
+                          |                      --1.24%--ray_raze_fn
+                          |                                ray_concat_fn
+                          |          
+                           --2.40%--call_lambda_impl
+                                     |          
+                                      --2.40%--vm_exec (inlined)
+                                                vm_exec_rows
+                                                |          
+                                                 --1.12%--ray_eval
+
+    22.56%     0.00%  rayforce  rayforce              [.] call_lambda_impl
+            |
+            ---call_lambda_impl
+               |          
+                --22.56%--vm_exec (inlined)
+                          |          
+                           --22.49%--vm_exec_rows
+                                     |          
+                                     |--15.51%--vm_call_binary
+                                     |          |          
+                                     |          |--5.64%--sort_table_by_keys
+                                     |          |          |          
+                                     |          |           --5.18%--pool_dispatch_at
+                                     |          |                     dispatch_round (inlined)
+                                     |          |                     pool_run_window
+                                     |          |                     pool_main_run_steal (inlined)
+                                     |          |                     |          
+                                     |          |                      --5.16%--pool_run_steal
+                                     |          |                                |          
+                                     |          |                                 --5.14%--pool_exec (inlined)
+                                     |          |                                           ray_qstats_task_end (inlined)
+                                     |          |                                           |          
+                                     |          |                                            --3.87%--sorted_check_fn
+                                     |          |                                                      |          
+                                     |          |                                                       --3.85%--ray_sym_str
+                                     |          |                                                                 sym_lock (inlined)
+                                     |          |          
+                                     |          |--3.86%--ray_find_fn
+                                     |          |          |          
+                                     |          |           --1.41%--0x5563123955b3
+                                     |          |          
+                                     |           --3.47%--atomic_map_binary_op
+                                     |          
+                                     |--3.47%--ray_eval
+                                     |          
+                                      --1.27%--ray_ungroup_fn
+                                                |          
+                                                 --1.24%--ray_raze_fn
+                                                           ray_concat_fn
+
+    22.56%     0.00%  rayforce  rayforce              [.] vm_exec (inlined)
+            |
+            ---vm_exec (inlined)
+               |          
+                --22.49%--vm_exec_rows
+                          |          
+                          |--15.51%--vm_call_binary
+                          |          |          
+                          |          |--5.64%--sort_table_by_keys
+                          |          |          |          
+                          |          |           --5.18%--pool_dispatch_at
+                          |          |                     dispatch_round (inlined)
+                          |          |                     pool_run_window
+                          |          |                     pool_main_run_steal (inlined)
+                          |          |                     |          
+                          |          |                      --5.16%--pool_run_steal
+                          |          |                                |          
+                          |          |                                 --5.14%--pool_exec (inlined)
+                          |          |                                           ray_qstats_task_end (inlined)
+                          |          |                                           |          
+                          |          |                                            --4.87%--sorted_check_fn
+                          |          |                                                      |          
+                          |          |                                                       --4.83%--ray_sym_str
+                          |          |                                                                 sym_lock (inlined)
+                          |          |          
+                          |          |--3.86%--ray_find_fn
+                          |          |          |          
+                          |          |          |--2.40%--hashset_find_xrow
+                          |          |          |          
+                          |          |           --1.30%--hashset_insert
+                          |          |          
+                          |           --3.47%--atomic_map_binary_op
+                          |          
+                          |--3.49%--ray_eval
+                          |          
+                           --1.27%--ray_ungroup_fn
+                                     |          
+                                      --1.24%--ray_raze_fn
+                                                ray_concat_fn
+
+    22.49%     0.24%  rayforce  rayforce              [.] vm_exec_rows
+            |          
+             --22.25%--vm_exec_rows
+                       |          
+                       |--15.51%--vm_call_binary
+                       |          |          
+                       |          |--5.64%--sort_table_by_keys
+                       |          |          |          
+                       |          |           --5.18%--pool_dispatch_at
+                       |          |                     dispatch_round (inlined)
+                       |          |                     pool_run_window
+                       |          |                     pool_main_run_steal (inlined)
+                       |          |                     |          
+                       |          |                      --5.16%--pool_run_steal
+                       |          |                                |          
+                       |          |                                 --5.14%--pool_exec (inlined)
+                       |          |                                           ray_qstats_task_end (inlined)
+                       |          |                                           |          
+                       |          |                                            --4.87%--sorted_check_fn
+                       |          |                                                      |          
+                       |          |                                                       --4.83%--ray_sym_str
+                       |          |                                                                 sym_lock (inlined)
+                       |          |          
+                       |          |--3.86%--ray_find_fn
+                       |          |          |          
+                       |          |          |--2.40%--hashset_find_xrow
+                       |          |          |          
+                       |          |           --1.30%--hashset_insert
+                       |          |          
+                       |           --3.47%--atomic_map_binary_op
+                       |          
+                       |--3.48%--ray_eval
+                       |          
+                        --1.27%--ray_ungroup_fn
+                                  |          
+                                   --1.24%--ray_raze_fn
+                                             ray_concat_fn
+
+    18.21%     0.00%  rayforce  rayforce              [.] _start
+            |
+            ---_start
+               __libc_start_main
+               0x7f436ece6781
+               main
+               |          
+                --18.21%--ray_repl_run_file
+                          ray_eval
+                          ray_do_fn
+                          ray_eval
+                          |          
+                           --18.10%--ray_eval
+                                     ray_do_fn
+                                     ray_eval
+                                     ray_set_fn
+                                     ray_eval
+                                     ray_timeit_fn
+                                     ray_is_lazy (inlined)
+                                     ray_eval
+                                     |          
+                                     |--12.89%--call_lambda_impl
+                                     |          vm_exec (inlined)
+                                     |          |          
+                                     |           --12.83%--vm_exec_rows
+                                     |                     |          
+                                     |                     |--9.79%--vm_call_binary
+                                     |                     |          |          
+                                     |                     |          |--3.96%--sort_table_by_keys
+                                     |                     |          |          |          
+                                     |                     |          |           --3.90%--pool_dispatch_at
+                                     |                     |          |                     dispatch_round (inlined)
+                                     |                     |          |                     pool_run_window
+                                     |                     |          |                     pool_main_run_steal (inlined)
+                                     |                     |          |                     |          
+                                     |                     |          |                      --3.89%--pool_run_steal
+                                     |                     |          |                                |          
+                                     |                     |          |                                 --3.87%--pool_exec (inlined)
+                                     |                     |          |                                           ray_qstats_task_end (inlined)
+                                     |                     |          |                                           sorted_check_fn
+                                     |                     |          |                                           |          
+                                     |                     |          |                                            --3.85%--ray_sym_str
+                                     |                     |          |                                                      sym_lock (inlined)
+                                     |                     |          |          
+                                     |                     |          |--2.94%--atomic_map_binary_op
+                                     |                     |          |          
+                                     |                     |           --1.38%--ray_find_fn
+                                     |                     |          
+                                     |                      --1.72%--ray_eval
+                                     |          
+                                      --5.20%--ray_do_fn
+                                                ray_eval
+                                                |          
+                                                |--2.80%--ray_eval
+                                                |          call_lambda_impl
+                                                |          vm_exec (inlined)
+                                                |          vm_exec_rows
+                                                |          |          
+                                                |           --1.27%--ray_ungroup_fn
+                                                |                     |          
+                                                |                      --1.24%--ray_raze_fn
+                                                |                                ray_concat_fn
+                                                |          
+                                                 --2.40%--call_lambda_impl
+                                                           |          
+                                                            --2.40%--vm_exec (inlined)
+                                                                      vm_exec_rows
+                                                                      |          
+                                                                       --1.12%--ray_eval
+
+    16.94%     0.04%  rayforce  rayforce              [.] vm_call_binary
+            |          
+             --16.91%--vm_call_binary
+                       |          
+                       |--5.94%--sort_table_by_keys
+                       |          |          
+                       |           --5.34%--pool_dispatch_at
+                       |                     dispatch_round (inlined)
+                       |                     pool_run_window
+                       |                     pool_main_run_steal (inlined)
+                       |                     |          
+                       |                      --5.32%--pool_run_steal
+                       |                                |          
+                       |                                 --5.31%--pool_exec (inlined)
+                       |                                           ray_qstats_task_end (inlined)
+                       |                                           |          
+                       |                                            --4.87%--sorted_check_fn
+                       |                                                      |          
+                       |                                                       --4.83%--ray_sym_str
+                       |                                                                 sym_lock (inlined)
+                       |          
+                       |--4.23%--atomic_map_binary_op
+                       |          |          
+                       |           --1.08%--ray_free_last_ref
+                       |          
+                        --4.03%--ray_find_fn
+                                  |          
+                                  |--2.48%--hashset_find_xrow
+                                  |          
+                                   --1.38%--hashset_insert
+
+     7.30%     7.26%  rayforce  rayforce              [.] multi_gather_fn
+            |          
+             --6.59%--0x7f436eddf72c
+                       0x7f436ed57042
+                       thread_trampoline
+                       worker_loop
+                       pool_run_steal
+                       pool_exec (inlined)
+                       ray_qstats_task_end (inlined)
+                       multi_gather_fn
+
+     7.25%     0.07%  rayforce  rayforce              [.] pool_run_window
+            |          
+             --7.18%--pool_run_window
+                       |          
+                        --7.18%--pool_main_run_steal (inlined)
+                                  pool_run_steal
+                                  |          
+                                   --7.08%--pool_exec (inlined)
+                                             ray_qstats_task_end (inlined)
+                                             |          
+                                              --4.87%--sorted_check_fn
+                                                        |          
+                                                         --4.83%--ray_sym_str
+                                                                   sym_lock (inlined)
+
+     7.23%     0.00%  rayforce  rayforce              [.] pool_main_run_steal (inlined)
+            |
+            ---pool_main_run_steal (inlined)
+               |          
+                --7.18%--pool_run_steal
+                          |          
+                           --7.08%--pool_exec (inlined)
+                                     ray_qstats_task_end (inlined)
+                                     |          
+                                      --4.87%--sorted_check_fn
+                                                |          
+                                                 --4.83%--ray_sym_str
+                                                           sym_lock (inlined)
+
+     6.60%     0.01%  rayforce  rayforce              [.] pool_dispatch_at
+            |          
+             --6.58%--pool_dispatch_at
+                       dispatch_round (inlined)
+                       |          
+                        --6.56%--pool_run_window
+                                  |          
+                                   --6.54%--pool_main_run_steal (inlined)
+                                             |          
+                                              --6.50%--pool_run_steal
+                                                        |          
+                                                         --6.43%--pool_exec (inlined)
+                                                                   ray_qstats_task_end (inlined)
+                                                                   |          
+                                                                    --4.87%--sorted_check_fn
+                                                                              |          
+                                                                               --4.83%--ray_sym_str
+                                                                                         sym_lock (inlined)
+
+     6.58%     0.00%  rayforce  rayforce              [.] dispatch_round (inlined)
+            |
+            ---dispatch_round (inlined)
+               |          
+                --6.56%--pool_run_window
+                          |          
+                           --6.54%--pool_main_run_steal (inlined)
+                                     |          
+                                      --6.50%--pool_run_steal
+                                                |          
+                                                 --6.43%--pool_exec (inlined)
+                                                           ray_qstats_task_end (inlined)
+                                                           |          
+                                                            --4.87%--sorted_check_fn
+                                                                      |          
+                                                                       --4.83%--ray_sym_str
+                                                                                 sym_lock (inlined)
+
+     5.94%     0.02%  rayforce  rayforce              [.] sort_table_by_keys
+            |          
+             --5.92%--sort_table_by_keys
+                       |          
+                        --5.34%--pool_dispatch_at
+                                  dispatch_round (inlined)
+                                  pool_run_window
+                                  pool_main_run_steal (inlined)
+                                  |          
+                                   --5.32%--pool_run_steal
+                                             |          
+                                              --5.31%--pool_exec (inlined)
+                                                        ray_qstats_task_end (inlined)
+                                                        |          
+                                                         --4.87%--sorted_check_fn
+                                                                   |          
+                                                                    --4.83%--ray_sym_str
+                                                                              sym_lock (inlined)
+
+     4.97%     0.39%  rayforce  rayforce              [.] atomic_map_binary_op
+            |          
+             --4.57%--atomic_map_binary_op
+                       |          
+                        --1.32%--ray_free_last_ref
+                                  |          
+                                   --1.12%--ray_free_node (inlined)
+
+     4.65%     0.00%  rayforce  rayforce              [.] _start
+            |
+            ---_start
+               __libc_start_main
+               0x7f436ece6781
+               main
+               ray_repl_run_file
+               ray_eval
+               ray_do_fn
+               ray_eval
+               |          
+                --4.46%--ray_eval
+                          ray_do_fn
+                          ray_eval
+                          ray_set_fn
+                          ray_eval
+                          ray_timeit_fn
+                          ray_is_lazy (inlined)
+                          ray_eval
+                          call_lambda_impl
+                          vm_exec (inlined)
+                          vm_exec_rows
+                          |          
+                           --4.36%--vm_call_binary
+                                     |          
+                                      --2.36%--ray_find_fn
+                                                |          
+                                                 --1.41%--hashset_find_xrow
+
+     4.33%     4.31%  rayforce  rayforce              [.] binary_range
+            |          
+             --3.70%--0x7f436eddf72c
+                       0x7f436ed57042
+                       thread_trampoline
+                       worker_loop
+                       pool_run_steal
+                       pool_exec (inlined)
+                       ray_qstats_task_end (inlined)
+                       par_binary_fn
+                       |          
+                       |--1.93%--binary_range
+                       |          
+                        --1.77%--0x55631242f4e2
+
+     4.13%     0.01%  rayforce  rayforce              [.] par_binary_fn
+            |          
+             --4.12%--par_binary_fn
+                       |          
+                        --4.12%--binary_range
+
+     4.03%     0.06%  rayforce  rayforce              [.] ray_find_fn
+            |          
+             --3.97%--ray_find_fn
+                       |          
+                       |--2.48%--hashset_find_xrow
+                       |          
+                        --1.38%--hashset_insert
+
+     2.52%     1.46%  rayforce  rayforce              [.] hashset_find_xrow
+            |          
+            |--1.46%--_start
+            |          __libc_start_main
+            |          0x7f436ece6781
+            |          main
+            |          ray_repl_run_file
+            |          ray_eval
+            |          ray_do_fn
+            |          ray_eval
+            |          ray_eval
+            |          ray_do_fn
+            |          ray_eval
+            |          ray_set_fn
+            |          ray_eval
+            |          ray_timeit_fn
+            |          ray_is_lazy (inlined)
+            |          ray_eval
+            |          |          
+            |           --1.41%--call_lambda_impl
+            |                     vm_exec (inlined)
+            |                     vm_exec_rows
+            |                     |          
+            |                      --1.36%--vm_call_binary
+            |                                |          
+            |                                 --1.34%--ray_find_fn
+            |                                           hashset_find_xrow
+            |          
+             --1.06%--hashset_find_xrow
+
+     2.28%     0.03%  rayforce  rayforce              [.] ray_execute
+            |          
+             --2.25%--ray_execute
+                       ray_execute_inner (inlined)
+                       |          
+                        --2.02%--exec_node
+                                  |          
+                                   --2.00%--exec_node_inner
+
+     2.27%     0.00%  rayforce  rayforce              [.] ray_execute_inner (inlined)
+            |
+            ---ray_execute_inner (inlined)
+               |          
+                --2.02%--exec_node
+                          |          
+                           --2.00%--exec_node_inner
+
+     2.02%     0.03%  rayforce  rayforce              [.] exec_node
+            |          
+             --1.99%--exec_node
+                       |          
+                        --1.98%--exec_node_inner
+
+     2.00%     0.09%  rayforce  rayforce              [.] exec_node_inner
+            |          
+             --1.90%--exec_node_inner
+
+     1.89%     1.84%  rayforce  rayforce              [.] ray_free_last_ref
+            |          
+             --1.84%--_start
+                       __libc_start_main
+                       0x7f436ece6781
+                       main
+                       ray_repl_run_file
+                       ray_eval
+                       ray_do_fn
+                       ray_eval
+                       ray_eval
+                       ray_do_fn
+                       ray_eval
+                       ray_set_fn
+                       ray_eval
+                       ray_timeit_fn
+                       ray_is_lazy (inlined)
+                       ray_eval
+                       |          
+                        --1.18%--call_lambda_impl
+                                  vm_exec (inlined)
+                                  vm_exec_rows
+
+     1.51%     0.00%  rayforce  rayforce              [.] ray_free_node (inlined)
+            |
+            ---ray_free_node (inlined)
+               |          
+                --1.24%--ray_free_block (inlined)
+
+     1.40%     0.93%  rayforce  rayforce              [.] hashset_insert
+     1.29%     0.00%  rayforce  rayforce              [.] ray_free_block (inlined)
+            |
+            ---ray_free_block (inlined)
+
+     1.27%     0.00%  rayforce  rayforce              [.] ray_ungroup_fn
+            |          
+             --1.27%--ray_ungroup_fn
+                       |          
+                        --1.24%--ray_raze_fn
+                                  ray_concat_fn
+
+     1.25%     0.00%  rayforce  rayforce              [.] ray_concat_fn
+            |
+            ---ray_concat_fn
+
+     1.24%     0.00%  rayforce  rayforce              [.] ray_raze_fn
+            |
+            ---ray_raze_fn
+               ray_concat_fn
+
+     1.05%     1.05%  rayforce  rayforce              [.] ray_vec_is_null
+            |
+            ---_start
+               __libc_start_main
+               0x7f436ece6781
+               main
+               ray_repl_run_file
+               ray_eval
+               ray_do_fn
+               ray_eval
+               ray_eval
+               ray_do_fn
+               ray_eval
+               ray_set_fn
+               ray_eval
+               ray_timeit_fn
+               ray_is_lazy (inlined)
+               ray_eval
+
+     1.04%     1.04%  rayforce  rayforce              [.] hash_row_keys
+     1.04%     1.04%  rayforce  rayforce              [.] hs_eq_rows
+            |
+            ---_start
+               __libc_start_main
+               0x7f436ece6781
+               main
+               ray_repl_run_file
+               ray_eval
+               ray_do_fn
+               ray_eval
+               ray_eval
+               ray_do_fn
+               ray_eval
+               ray_set_fn
+               ray_eval
+               ray_timeit_fn
+               ray_is_lazy (inlined)
+               ray_eval
+
+     1.02%     1.02%  rayforce  rayforce              [.] sentinel_is_null
+            |
+            ---_start
+               __libc_start_main
+               0x7f436ece6781
+               main
+               ray_repl_run_file
+               ray_eval
+               ray_do_fn
+               ray_eval
+               ray_eval
+               ray_do_fn
+               ray_eval
+               ray_set_fn
+               ray_eval
+               ray_timeit_fn
+               ray_is_lazy (inlined)
+               ray_eval
+
+
+
+#
+# (Tip: Profiling branch (mis)predictions with: perf record -b / perf report)
+#

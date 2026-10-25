@@ -1,0 +1,1 @@
+{"mode": "trend", "instruments": 100, "steps": 1096, "bars": 109600, "fills": 7817, "load_ms": 4.45376, "run_ms": 1318.39, "prepare_ms": 0, "strategy_ms": 706.315, "check_ms": 58.4562, "metrics_ms": 0.243243}

@@ -1,0 +1,198 @@
+;; Script entry point: run a strategy and the buy-and-hold baseline on a data
+;; snapshot under the same configuration, check the accounting, and write the
+;; outputs, a run manifest and a report. Use run.sh, which verifies the
+;; snapshot checksums and records the revisions:
+;;
+;;   rayforce run.rfl -- -strategy trend -data DIR -out DIR -rev GITREV \
+;;                       -snapshot_sha SHA -rayforce_sha SHA
+;;
+;; Run from backtest.
+
+(load "bt.rfl")
+(load "report.rfl")
+
+(set args (at (.sys.args) 'user))
+(set arg (fn [k]
+  (let v (at args k))
+  (if (or (nil? v) (== 0 (count v))) (raise (format "run: missing -%" k)) v)))
+(set data_dir (concat (arg 'data) "/"))
+(set out_dir (concat (arg 'out) "/"))
+
+;; Optional native workbench export, alongside the unchanged CLI report/CSVs.
+(set workbench_export (not (nil? (at args 'service))))
+(if workbench_export
+  (do (load (arg 'service)) (load (arg 'bundle_module))))
+
+;; ---- configuration shared by the strategy and the baseline
+(set cfg {cash0: 10000000000000         ; 100000 USDT in 1e-8 units
+          fee_ppm: 1000                 ; 10 bp taker fee on notional
+          start: 2023.10.01D00:00:00.000
+          period: 1D                    ; 1 day
+          steps: 1096                   ; end = 2026-10-01
+          max_weight_ppm: 400000        ; at most 40 % of equity per instrument
+          max_gross_ppm: 1000000        ; no leverage
+          buy_policy: 'SCALE})          ; buys share the cash pro rata
+
+(set instruments (read-csv [SYM I64 I64 I64 STR STR] (concat data_dir "instruments.csv")))
+(set bars (read-csv [TIMESTAMP SYM I64 I64 I64 I64 I64] (concat data_dir "bars.csv")))
+
+;; Each strategy file registers its descriptor under strategies.<name>.
+(load "strategies/buyhold.rfl")
+(load (concat "strategies/" (concat (arg 'strategy) ".rfl")))
+(set main_strategy (at strategies (as 'SYM (arg 'strategy))))
+(if (nil? main_strategy) (raise (format "run: strategies/%.rfl registers no strategies.%" (arg 'strategy) (arg 'strategy))))
+
+;; Run one strategy; write its outputs under out_dir/name/ and return
+;; {name params metrics attribution}, attribution being per instrument.
+(set run_one (fn [s]
+  (bt_run_strategy cfg instruments bars s)
+  (bt_check_identities)
+  (bt_check_limits)
+  (let a (bt_attribution))
+  (bt_check_attribution a)
+  (let dir (format "%%/" out_dir (at s 'name)))   ; created by run.sh
+  (bt_write_outputs dir)
+  (.csv.write a (concat dir "attribution.csv"))
+  (let from_ts (+ bt.start (* st_warmup bt.period)))
+  (let result (dict [name params metrics attribution]
+        (list (at s 'name) (at s 'params) (bt_metrics st_warmup) (bt_attribution_by_sym a from_ts))))
+  (if workbench_export
+    (dict [name params metrics attribution dataset summary]
+      (concat (value result) (list (wb_capture) (wb_summary st_warmup))))
+    result)))
+
+(set main (run_one main_strategy))
+(set base (run_one strategies.buyhold))
+
+;; ---- manifest
+(set build (.sys.build))
+(set manifest (format
+               "{
+ \"strategy\": \"%\",
+ \"strategy_params\": \"%\",
+ \"baseline\": \"buyhold\",
+ \"baseline_params\": \"%\",
+ \"config\": \"%\",
+ \"warmup_days\": %,
+ \"data_dir\": \"%\",
+ \"data_snapshot_sha256sums_sha256\": \"%\",
+ \"framework_git_rev\": \"%\",
+ \"rayforce_version\": \"%\",
+ \"rayforce_binary_sha256\": \"%\",
+ \"rayforce_build_date\": \"%\",
+ \"assumptions\": [
+  \"decision at each day boundary T uses closes of bars ending at or before T\",
+  \"market orders fill at the open of the bar starting at T; sells before buys; an order is filled at most once and nothing carries over to the next day\",
+  \"fee: % ppm of notional, rounded up to the 1e-8 USDT cash unit\",
+  \"orders below min_qty or min_notional (at the decision-time mark) are rejected at submission\",
+  \"targets are capped at % ppm of pre-trade equity per instrument and % ppm in total, valued at the decision-time mark\",
+  \"buy policy %: when the buys cost more than the cash left after the sells, SCALE cuts each to the same fraction of its quantity, REJECT fills them in symbol order and rejects each one that does not fit\",
+  \"valuation at the last available close; missing bars leave the mark stale\",
+  \"daily returns annualised with 365 periods; risk-free rate 0\",
+  \"no stochastic component\"
+ ]
+}
+"
+               (at main 'name) (at main 'params) (at base 'params) cfg st_warmup (arg 'data) (arg 'snapshot_sha) (arg 'rev)
+               (at build 'version) (arg 'rayforce_sha) (at build 'build-date) (at cfg 'fee_ppm)
+               (at cfg 'max_weight_ppm) (at cfg 'max_gross_ppm) (at cfg 'buy_policy)))
+(write (concat out_dir "manifest.json") manifest)
+
+;; ---- report
+(set pct (fn [x] (format "%%" (bt_round (* 100.0 x) 2) "%")))
+(set usdt (fn [x] (format "%" (bt_round (/ x 100000000.0) 2))))
+(set num (fn [x] (format "%" (bt_round x 2))))
+(set row (fn [label f k] (format "| % | % | % |\n" label (f (at (at main 'metrics) k)) (f (at (at base 'metrics) k)))))
+(set m (at main 'metrics))
+
+(set attr_rows (fn [r]
+  (let a (at r 'attribution))
+  (str-join (map (fn [i] (format "| % | % | % |\n" (at (at a 'sym) i)
+                                 (usdt (at (at a 'pnl) i)) (usdt (at (at a 'fees) i))))
+                 (til (count a))) "")))
+
+(set report (concat (format
+                     "# Backtest report: % vs buy-and-hold
+
+Data: `%` (SHA256SUMS sha256 `%`). Framework revision `%`, Rayforce %
+(binary sha256 `%`).
+Evaluation window: % days, from the first decision day (day %) to the end of
+the run (%).
+Starting capital 100000 USDT, fee % bp, next-open market fills. Targets are
+capped at %% of equity per instrument and %% in total; buy policy %. Bar-based
+execution is a model: it has no intrabar detail, slippage or liquidity limit.
+
+| Metric | % | buyhold |
+|---|---|---|
+"
+                     (at main 'name) (arg 'data) (arg 'snapshot_sha) (arg 'rev) (at build 'version) (arg 'rayforce_sha)
+                     (at m 'days) st_warmup (as 'DATE (+ bt.start (* bt.steps bt.period))) (/ (at cfg 'fee_ppm) 100)
+                     (/ (at cfg 'max_weight_ppm) 10000) "%" (/ (at cfg 'max_gross_ppm) 10000) "%" (at cfg 'buy_policy)
+                     (at main 'name))
+                    (concat (str-join (list
+                                       (row "Total return" pct 'total_return)
+                                       (row "CAGR" pct 'cagr)
+                                       (row "Annualised volatility" pct 'ann_vol)
+                                       (row "Sharpe (rf 0)" num 'sharpe)
+                                       (row "Max drawdown" pct 'max_drawdown)
+                                       (row "Net P&L (USDT)" usdt 'net_pnl)
+                                       (row "Gross P&L before fees (USDT)" usdt 'gross_pnl)
+                                       (row "Fees (USDT)" usdt 'fees)
+                                       (row "Annual turnover (x equity)" num 'turnover_ann)
+                                       (row "Fills" (fn [x] (format "%" x)) 'trades)
+                                       (row "Average exposure" pct 'avg_exposure)
+                                       (row "Targets cut by a limit" (fn [x] (format "%" x)) 'limited)
+                                       (row "Buys scaled for cash" (fn [x] (format "%" x)) 'scaled)) "")
+                            (concat (format "
+## P&L attribution (%)
+
+| Instrument | Price P&L (USDT) | Fees (USDT) |
+|---|---|---|
+" (at main 'name))
+                                    (concat (attr_rows main)
+                                            (concat "
+## buyhold attribution
+
+| Instrument | Price P&L (USDT) | Fees (USDT) |
+|---|---|---|
+"
+                                                    (concat (attr_rows base) "
+## Reconciliation
+
+Checked for both runs before this report was written (the run fails otherwise):
+
+- equity = cash0 + realized + unrealized - fees at every snapshot;
+- cash = cash0 + sum of ledger cash deltas; fees in fills = fees in the ledger;
+- every daily equity change = sum of per-instrument price P&L - fees of that
+  day's fills (attribution.csv).
+
+Gross P&L = net P&L + fees; trading costs are the fees column, and slippage is
+not modelled.
+")))))))
+(write (concat out_dir "report.md") report)
+(println (format "wrote %report.md" out_dir))
+
+(if workbench_export
+  (do
+    (let names (as 'SYM (list (at main 'name) (at base 'name))))
+    (let parameters (dict names (list (at main 'params) (at base 'params))))
+    (wb_publish (arg 'run_id)
+      (dict [framework_revision snapshot_sha256 rayforce_binary_sha256 rayforce_version config_text parameter_text]
+        (list (arg 'rev) (arg 'snapshot_sha) (arg 'rayforce_sha) (at build 'version)
+          (format "%" cfg)
+          (dict names (list (format "%" (at main 'params)) (format "%" (at base 'params))))))
+      (dict names (list (at main 'dataset) (at base 'dataset)))
+      (dict names (list (at main 'summary) (at base 'summary))))
+    (let instrument_metadata
+      (map (fn [i]
+        (dict [symbol multiplier tick_decimal lot_decimal]
+          (list (format "%" (at (at instruments 'sym) i)) (at (at instruments 'mult) i)
+                (at (at instruments 'tick) i) (at (at instruments 'lot) i))))
+        (til (count instruments))))
+    (wb_save_staged (arg 'directory)
+      (dict [effective_config parameters snapshot cash_scale instruments]
+        (list cfg parameters
+          (dict [directory sha256sums_sha256] (list (arg 'data) (arg 'snapshot_sha)))
+          (dict [currency cash_unit_decimal] (list "USDT" "0.00000001"))
+          instrument_metadata))))
+  null)

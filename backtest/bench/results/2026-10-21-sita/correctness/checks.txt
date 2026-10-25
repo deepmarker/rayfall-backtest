@@ -1,0 +1,23 @@
+rayforce test/fixture1.rfl </dev/null
+PASS fixture1
+rayforce test/fixture2.rfl </dev/null
+PASS fixture2
+rayforce test/fixture3.rfl </dev/null
+PASS fixture3
+rayforce test/fixture4.rfl </dev/null
+PASS fixture4
+rayforce test/fixture5.rfl </dev/null
+PASS fixture5
+rayforce test/fixture6.rfl </dev/null
+PASS fixture6
+rayforce test/equivalence.rfl </dev/null
+PASS equivalence
+RAYFORCE=rayforce python3 -I test/oracle.py
+PASS independent oracle: 50 seeds, 3 instruments, 16 steps, REJECT
+RAYFORCE=rayforce test/determinism.sh trend data/binance-spot-1d-2023-10_2026-09
+PASS determinism (trend: 18 files identical)
+RAYFORCE=rayforce test/determinism.sh xsmom data/binance-spot12-1d-2023-10_2026-09
+PASS determinism (xsmom: 18 files identical)
+emacs --batch -L /home/vb/code/rayforce/tree-sitter-rayfall -l tools/rfl-fmt.el --check bt.rfl report.rfl run.rfl ref/bt_ref.rfl strategies/buyhold.rfl strategies/common.rfl strategies/trend.rfl strategies/xsmom.rfl test/assert.rfl test/causal.rfl test/equivalence.rfl test/fixture1.rfl test/fixture2.rfl test/fixture3.rfl test/fixture4.rfl test/fixture5.rfl test/fixture6.rfl bench/bench.rfl
+../../../rayforce/tree-sitter-rayfall/rayfall-mode.el: Warning: ‘when-let’ is an obsolete macro (as of 31.1); use ‘when-let*’ or ‘and-let*’ instead.
+../../../rayforce/tree-sitter-rayfall/rayfall-mode.el: Warning: ‘when-let’ is an obsolete macro (as of 31.1); use ‘when-let*’ or ‘and-let*’ instead.

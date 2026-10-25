@@ -1,0 +1,6 @@
+[submodule "vendor/rayforce-ipc"]
+	path = vendor/rayforce-ipc
+	url = https://github.com/deepmarker/ocaml-rayforce-ipc.git
+[submodule "vendor/imguiml-ft"]
+	path = vendor/imguiml-ft
+	url = https://github.com/vbmithr/imguiml-ft.git

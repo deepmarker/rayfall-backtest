@@ -1,0 +1,665 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 6K of event 'cycles:u'
+# Event count (approx.): 41391753616
+#
+# Children      Self  Command   Shared Object         Symbol                          
+# ........  ........  ........  ....................  ................................
+#
+    51.31%     0.43%  rayforce  rayforce              [.] pool_run_steal
+            |          
+             --50.88%--pool_run_steal
+                       |          
+                        --50.88%--pool_exec (inlined)
+                                  |          
+                                  |--21.17%--multi_gather_fn
+                                  |          
+                                  |--9.11%--par_binary_fn
+                                  |          |          
+                                  |           --8.28%--binary_range
+                                  |          
+                                  |--2.56%--join_fill_fn
+                                  |          
+                                  |--2.33%--agg_key_directory_insert
+                                  |          
+                                  |--2.30%--join_count_fn
+                                  |          
+                                   --2.19%--msd_bucket_sort_fn
+                                             |          
+                                              --2.19%--bucket_lsb_sort (inlined)
+
+    50.88%     0.00%  rayforce  rayforce              [.] pool_exec (inlined)
+            |
+            ---pool_exec (inlined)
+               |          
+               |--21.17%--multi_gather_fn
+               |          
+               |--9.11%--par_binary_fn
+               |          |          
+               |           --9.11%--binary_range
+               |          
+               |--2.56%--join_fill_fn
+               |          
+               |--2.33%--agg_key_directory_insert
+               |          
+               |--2.30%--join_count_fn
+               |          
+                --2.19%--msd_bucket_sort_fn
+                          |          
+                           --2.19%--bucket_lsb_sort (inlined)
+
+    46.72%     0.00%  rayforce  libc.so.6             [.] 0x00007f5746d7272b
+            |
+            ---0x7f5746d7272b
+               |          
+                --46.72%--0x7f5746cea041
+                          thread_trampoline
+                          |          
+                           --46.72%--worker_loop
+                                     |          
+                                      --46.72%--pool_run_steal
+                                                |          
+                                                 --46.44%--pool_exec (inlined)
+                                                           |          
+                                                           |--19.86%--multi_gather_fn
+                                                           |          
+                                                           |--8.18%--par_binary_fn
+                                                           |          |          
+                                                           |           --8.18%--binary_range
+                                                           |          
+                                                           |--2.37%--join_fill_fn
+                                                           |          
+                                                           |--2.11%--agg_key_directory_insert
+                                                           |          
+                                                            --2.08%--join_count_fn
+
+    46.72%     0.00%  rayforce  rayforce              [.] thread_trampoline
+            |          
+            |--44.59%--thread_trampoline
+            |          worker_loop
+            |          |          
+            |           --44.59%--pool_run_steal
+            |                     |          
+            |                      --44.34%--pool_exec (inlined)
+            |                                |          
+            |                                |--19.86%--multi_gather_fn
+            |                                |          
+            |                                |--7.46%--par_binary_fn
+            |                                |          |          
+            |                                |           --7.46%--binary_range
+            |                                |          
+            |                                |--2.37%--join_fill_fn
+            |                                |          
+            |                                |--2.11%--agg_key_directory_insert
+            |                                |          
+            |                                 --2.08%--join_count_fn
+            |          
+             --2.13%--0x55be41653528
+                       |          
+                        --2.13%--0x55be416569c3
+                                  |          
+                                   --2.13%--0x55be41656bf1
+                                             |          
+                                              --2.10%--0x55be41656eec
+
+    46.72%     0.00%  rayforce  libc.so.6             [.] 0x00007f5746cea041
+            |
+            ---0x7f5746cea041
+               thread_trampoline
+               |          
+                --46.72%--worker_loop
+                          |          
+                           --46.72%--pool_run_steal
+                                     |          
+                                      --46.44%--pool_exec (inlined)
+                                                |          
+                                                |--19.86%--multi_gather_fn
+                                                |          
+                                                |--8.18%--par_binary_fn
+                                                |          |          
+                                                |           --8.18%--binary_range
+                                                |          
+                                                |--2.37%--join_fill_fn
+                                                |          
+                                                |--2.11%--agg_key_directory_insert
+                                                |          
+                                                 --2.08%--join_count_fn
+
+    46.72%     0.00%  rayforce  rayforce              [.] worker_loop
+            |          
+            |--44.59%--worker_loop
+            |          |          
+            |           --44.59%--pool_run_steal
+            |                     |          
+            |                      --44.34%--pool_exec (inlined)
+            |                                |          
+            |                                |--19.86%--multi_gather_fn
+            |                                |          
+            |                                |--7.46%--par_binary_fn
+            |                                |          |          
+            |                                |           --7.46%--binary_range
+            |                                |          
+            |                                |--2.37%--join_fill_fn
+            |                                |          
+            |                                |--2.11%--agg_key_directory_insert
+            |                                |          
+            |                                 --2.08%--join_count_fn
+            |          
+             --2.13%--0x55be416569c3
+                       |          
+                        --2.13%--0x55be41656bf1
+                                  |          
+                                   --2.10%--0x55be41656eec
+
+    38.12%     0.67%  rayforce  rayforce              [.] vm_exec_rows
+            |          
+             --37.48%--vm_exec_rows
+                       |          
+                       |--25.77%--vm_call_binary
+                       |          |          
+                       |          |--9.85%--ray_find_fn
+                       |          |          |          
+                       |          |          |--6.22%--hashset_find_xrow
+                       |          |          |          
+                       |          |           --3.45%--hashset_insert
+                       |          |          
+                       |          |--9.47%--atomic_map_binary_op
+                       |          |          |          
+                       |          |          |--2.55%--ray_free_last_ref
+                       |          |          |          |          
+                       |          |          |           --2.05%--ray_free_node (inlined)
+                       |          |          |          
+                       |          |           --2.08%--ray_execute
+                       |          |                     ray_execute_inner (inlined)
+                       |          |          
+                       |           --2.31%--cast_vec_numeric
+                       |          
+                        --6.47%--ray_eval
+
+    33.90%     0.07%  rayforce  rayforce              [.] ray_eval
+            |
+            ---ray_eval
+               |          
+               |--20.99%--ray_eval
+               |          |          
+               |           --20.87%--ray_do_fn
+               |                     ray_eval
+               |                     ray_set_fn
+               |                     ray_eval
+               |                     ray_timeit_fn
+               |                     ray_eval
+               |                     |          
+               |                      --20.80%--call_lambda_impl
+               |                                vm_exec (inlined)
+               |                                vm_exec_rows
+               |                                |          
+               |                                 --20.35%--vm_call_binary
+               |                                           |          
+               |                                           |--9.55%--ray_find_fn
+               |                                           |          |          
+               |                                           |          |--5.93%--hashset_find_xrow
+               |                                           |          |          
+               |                                           |           --3.45%--hashset_insert
+               |                                           |          
+               |                                           |--6.39%--atomic_map_binary_op
+               |                                           |          |          
+               |                                           |           --2.33%--ray_free_last_ref
+               |                                           |          
+               |                                            --2.24%--cast_vec_numeric
+               |          
+               |--5.26%--ray_do_fn
+               |          ray_eval
+               |          |          
+               |          |--2.63%--ray_set_fn
+               |          |          |          
+               |          |           --2.53%--ray_eval
+               |          |                     ray_timeit_fn
+               |          |                     ray_eval
+               |          |          
+               |           --2.62%--ray_eval
+               |                     ray_do_fn
+               |                     ray_eval
+               |                     ray_set_fn
+               |                     ray_eval
+               |                     ray_timeit_fn
+               |                     ray_eval
+               |                     call_lambda_impl
+               |                     vm_exec (inlined)
+               |                     vm_exec_rows
+               |          
+                --2.49%--ray_timeit_fn
+                          ray_eval
+
+    31.73%     0.00%  rayforce  rayforce              [.] call_lambda_impl
+            |
+            ---call_lambda_impl
+               |          
+                --31.71%--vm_exec (inlined)
+                          vm_exec_rows
+                          |          
+                          |--25.84%--vm_call_binary
+                          |          |          
+                          |          |--10.44%--ray_find_fn
+                          |          |          |          
+                          |          |          |--6.80%--hashset_find_xrow
+                          |          |          |          
+                          |          |           --3.45%--hashset_insert
+                          |          |          
+                          |          |--9.06%--atomic_map_binary_op
+                          |          |          |          
+                          |          |           --3.52%--ray_free_last_ref
+                          |          |                     |          
+                          |          |                      --2.96%--ray_free_node (inlined)
+                          |          |                                |          
+                          |          |                                 --2.41%--ray_free_block (inlined)
+                          |          |          
+                          |           --2.35%--cast_vec_numeric
+                          |          
+                           --2.12%--ray_eval
+
+    31.71%     0.00%  rayforce  rayforce              [.] vm_exec (inlined)
+            |
+            ---vm_exec (inlined)
+               vm_exec_rows
+               |          
+               |--25.84%--vm_call_binary
+               |          |          
+               |          |--10.44%--ray_find_fn
+               |          |          |          
+               |          |          |--6.80%--hashset_find_xrow
+               |          |          |          
+               |          |           --3.45%--hashset_insert
+               |          |          
+               |          |--9.06%--atomic_map_binary_op
+               |          |          |          
+               |          |           --3.52%--ray_free_last_ref
+               |          |                     |          
+               |          |                      --2.96%--ray_free_node (inlined)
+               |          |                                |          
+               |          |                                 --2.41%--ray_free_block (inlined)
+               |          |          
+               |           --2.35%--cast_vec_numeric
+               |          
+                --2.12%--ray_eval
+
+    30.03%     0.02%  rayforce  rayforce              [.] ray_timeit_fn
+            |          
+             --30.01%--ray_timeit_fn
+                       ray_eval
+                       |          
+                       |--26.32%--call_lambda_impl
+                       |          vm_exec (inlined)
+                       |          vm_exec_rows
+                       |          |          
+                       |           --20.94%--vm_call_binary
+                       |                     |          
+                       |                     |--9.55%--ray_find_fn
+                       |                     |          |          
+                       |                     |          |--5.93%--hashset_find_xrow
+                       |                     |          |          
+                       |                     |           --3.45%--hashset_insert
+                       |                     |          
+                       |                     |--6.50%--atomic_map_binary_op
+                       |                     |          |          
+                       |                     |           --2.33%--ray_free_last_ref
+                       |                     |          
+                       |                      --2.24%--cast_vec_numeric
+                       |          
+                        --2.71%--ray_do_fn
+                                  ray_eval
+
+    28.60%     0.00%  rayforce  rayforce              [.] ray_set_fn
+            |
+            ---ray_set_fn
+               |          
+                --28.48%--ray_eval
+                          |          
+                           --27.47%--ray_timeit_fn
+                                     ray_eval
+                                     |          
+                                     |--25.41%--call_lambda_impl
+                                     |          vm_exec (inlined)
+                                     |          vm_exec_rows
+                                     |          |          
+                                     |           --20.94%--vm_call_binary
+                                     |                     |          
+                                     |                     |--9.55%--ray_find_fn
+                                     |                     |          |          
+                                     |                     |          |--5.93%--hashset_find_xrow
+                                     |                     |          |          
+                                     |                     |           --3.45%--hashset_insert
+                                     |                     |          
+                                     |                     |--6.50%--atomic_map_binary_op
+                                     |                     |          |          
+                                     |                     |           --2.33%--ray_free_last_ref
+                                     |                     |          
+                                     |                      --2.24%--cast_vec_numeric
+                                     |          
+                                      --2.06%--ray_do_fn
+                                                ray_eval
+
+    28.40%     0.19%  rayforce  rayforce              [.] vm_call_binary
+            |          
+             --28.21%--vm_call_binary
+                       |          
+                       |--11.03%--atomic_map_binary_op
+                       |          |          
+                       |          |--3.52%--ray_free_last_ref
+                       |          |          |          
+                       |          |           --2.96%--ray_free_node (inlined)
+                       |          |                     |          
+                       |          |                      --2.41%--ray_free_block (inlined)
+                       |          |          
+                       |           --2.08%--ray_execute
+                       |                     ray_execute_inner (inlined)
+                       |          
+                       |--10.44%--ray_find_fn
+                       |          |          
+                       |          |--6.80%--hashset_find_xrow
+                       |          |          
+                       |           --3.45%--hashset_insert
+                       |          
+                        --2.35%--cast_vec_numeric
+
+    27.36%     0.00%  rayforce  rayforce              [.] ray_do_fn
+            |
+            ---ray_do_fn
+               ray_eval
+               |          
+               |--23.16%--ray_set_fn
+               |          |          
+               |           --23.05%--ray_eval
+               |                     ray_timeit_fn
+               |                     ray_eval
+               |                     |          
+               |                      --21.55%--call_lambda_impl
+               |                                vm_exec (inlined)
+               |                                vm_exec_rows
+               |                                |          
+               |                                 --20.33%--vm_call_binary
+               |                                           |          
+               |                                           |--9.55%--ray_find_fn
+               |                                           |          |          
+               |                                           |          |--5.93%--hashset_find_xrow
+               |                                           |          |          
+               |                                           |           --3.45%--hashset_insert
+               |                                           |          
+               |                                           |--6.50%--atomic_map_binary_op
+               |                                           |          |          
+               |                                           |           --2.33%--ray_free_last_ref
+               |                                           |          
+               |                                            --2.21%--cast_vec_numeric
+               |          
+                --4.16%--ray_eval
+                          |          
+                           --3.00%--ray_do_fn
+                                     ray_eval
+                                     ray_set_fn
+                                     ray_eval
+                                     ray_timeit_fn
+                                     ray_eval
+                                     call_lambda_impl
+                                     vm_exec (inlined)
+                                     vm_exec_rows
+
+    21.17%    20.34%  rayforce  rayforce              [.] multi_gather_fn
+            |          
+             --19.05%--0x7f5746d7272b
+                       0x7f5746cea041
+                       thread_trampoline
+                       worker_loop
+                       pool_run_steal
+                       pool_exec (inlined)
+                       multi_gather_fn
+
+    13.06%     0.74%  rayforce  rayforce              [.] atomic_map_binary_op
+            |          
+             --12.32%--atomic_map_binary_op
+                       |          
+                       |--4.48%--ray_free_last_ref
+                       |          |          
+                       |           --3.74%--ray_free_node (inlined)
+                       |                     |          
+                       |                      --3.09%--ray_free_block (inlined)
+                       |          
+                        --2.36%--ray_execute
+                                  ray_execute_inner (inlined)
+                                  |          
+                                   --2.20%--exec_node
+                                             |          
+                                              --2.18%--exec_node_inner
+                                                        exec_elementwise_tree (inlined)
+
+    10.44%     0.12%  rayforce  rayforce              [.] ray_find_fn
+            |          
+             --10.32%--ray_find_fn
+                       |          
+                       |--6.80%--hashset_find_xrow
+                       |          
+                        --3.45%--hashset_insert
+
+     9.74%     9.68%  rayforce  rayforce              [.] binary_range
+            |          
+             --8.14%--0x7f5746d7272b
+                       0x7f5746cea041
+                       thread_trampoline
+                       worker_loop
+                       pool_run_steal
+                       pool_exec (inlined)
+                       par_binary_fn
+                       binary_range
+
+     9.11%     0.00%  rayforce  rayforce              [.] par_binary_fn
+            |          
+             --9.11%--par_binary_fn
+                       binary_range
+
+     6.83%     4.42%  rayforce  rayforce              [.] hashset_find_xrow
+            |          
+            |--3.88%--ray_eval
+            |          |          
+            |           --3.71%--ray_eval
+            |                     ray_do_fn
+            |                     ray_eval
+            |                     ray_set_fn
+            |                     ray_eval
+            |                     ray_timeit_fn
+            |                     ray_eval
+            |                     call_lambda_impl
+            |                     vm_exec (inlined)
+            |                     vm_exec_rows
+            |                     vm_call_binary
+            |                     ray_find_fn
+            |                     hashset_find_xrow
+            |          
+             --2.41%--hashset_find_xrow
+
+     5.98%     5.84%  rayforce  rayforce              [.] ray_free_last_ref
+            |          
+             --3.70%--ray_eval
+                       |          
+                        --2.72%--ray_eval
+                                  ray_do_fn
+                                  ray_eval
+                                  ray_set_fn
+                                  ray_eval
+                                  ray_timeit_fn
+                                  ray_eval
+                                  call_lambda_impl
+                                  vm_exec (inlined)
+                                  vm_exec_rows
+                                  vm_call_binary
+                                  |          
+                                   --2.56%--atomic_map_binary_op
+                                             |          
+                                              --2.33%--ray_free_last_ref
+
+     5.27%     0.00%  rayforce  rayforce              [.] ray_execute
+            |
+            ---ray_execute
+               ray_execute_inner (inlined)
+               |          
+                --4.55%--exec_node
+                          |          
+                           --4.50%--exec_node_inner
+                                     |          
+                                      --2.18%--exec_elementwise_tree (inlined)
+
+     5.27%     0.00%  rayforce  rayforce              [.] ray_execute_inner (inlined)
+            |
+            ---ray_execute_inner (inlined)
+               |          
+                --4.55%--exec_node
+                          |          
+                           --4.50%--exec_node_inner
+                                     |          
+                                      --2.18%--exec_elementwise_tree (inlined)
+
+     4.90%     0.32%  rayforce  rayforce              [.] pool_run_window
+            |          
+             --4.58%--pool_run_window
+                       pool_main_run_steal (inlined)
+                       pool_run_steal
+                       |          
+                        --4.02%--pool_exec (inlined)
+
+     4.88%     0.00%  rayforce  rayforce              [.] pool_main_run_steal (inlined)
+            |
+            ---pool_main_run_steal (inlined)
+               |          
+                --4.58%--pool_run_steal
+                          |          
+                           --4.44%--pool_exec (inlined)
+
+     4.76%     0.00%  rayforce  rayforce              [.] ray_free_node (inlined)
+            |
+            ---ray_free_node (inlined)
+               |          
+                --3.97%--ray_free_block (inlined)
+
+     4.55%     0.06%  rayforce  rayforce              [.] exec_node
+            |          
+             --4.48%--exec_node
+                       |          
+                        --4.46%--exec_node_inner
+                                  |          
+                                   --2.14%--exec_elementwise_tree (inlined)
+
+     4.50%     0.23%  rayforce  rayforce              [.] exec_node_inner
+            |          
+             --4.27%--exec_node_inner
+
+     4.20%     3.16%  rayforce  rayforce              [.] csv_parse_fn
+            |
+            ---csv_parse_fn
+
+     4.11%     0.00%  rayforce  rayforce              [.] ray_free_block (inlined)
+            |
+            ---ray_free_block (inlined)
+
+     3.70%     0.35%  rayforce  rayforce              [.] ray_vec_concat
+            |          
+             --3.34%--ray_vec_concat
+
+     3.67%     0.00%  rayforce  rayforce              [.] ray_concat_fn
+            |
+            ---ray_concat_fn
+               ray_vec_concat
+
+     3.47%     2.21%  rayforce  rayforce              [.] hashset_insert
+            |          
+             --2.21%--ray_eval
+                       ray_eval
+                       ray_do_fn
+                       ray_eval
+                       ray_set_fn
+                       ray_eval
+                       ray_timeit_fn
+                       ray_eval
+                       call_lambda_impl
+                       vm_exec (inlined)
+                       vm_exec_rows
+                       vm_call_binary
+                       ray_find_fn
+                       hashset_insert
+
+     3.44%     0.00%  rayforce  rayforce              [.] dispatch_round (inlined)
+            |
+            ---dispatch_round (inlined)
+               pool_run_window
+               |          
+                --3.42%--pool_main_run_steal (inlined)
+                          |          
+                           --3.32%--pool_run_steal
+                                     |          
+                                      --3.20%--pool_exec (inlined)
+
+     3.33%     0.02%  rayforce  rayforce              [.] pool_dispatch_at
+            |          
+             --3.31%--pool_dispatch_at
+                       dispatch_round (inlined)
+                       pool_run_window
+                       |          
+                        --3.29%--pool_main_run_steal (inlined)
+                                  |          
+                                   --3.20%--pool_run_steal
+                                             |          
+                                              --3.08%--pool_exec (inlined)
+
+     2.99%     2.90%  rayforce  rayforce              [.] hash_row_keys
+            |          
+             --2.64%--0x7f5746d7272b
+                       0x7f5746cea041
+                       thread_trampoline
+                       worker_loop
+                       pool_run_steal
+                       pool_exec (inlined)
+
+     2.98%     2.98%  rayforce  rayforce              [.] ray_vec_is_null
+     2.57%     0.55%  rayforce  rayforce              [.] join_fill_fn
+            |          
+             --2.02%--join_fill_fn
+
+     2.47%     2.47%  rayforce  rayforce              [.] sentinel_is_null
+     2.40%     0.02%  rayforce  rayforce              [.] cast_vec_numeric
+            |          
+             --2.37%--cast_vec_numeric
+
+     2.38%     2.38%  rayforce  rayforce              [.] hs_eq_rows
+            |          
+             --2.34%--ray_eval
+                       |          
+                        --2.29%--ray_eval
+                                  ray_do_fn
+                                  ray_eval
+                                  ray_set_fn
+                                  ray_eval
+                                  ray_timeit_fn
+                                  ray_eval
+                                  call_lambda_impl
+                                  vm_exec (inlined)
+                                  vm_exec_rows
+                                  vm_call_binary
+                                  ray_find_fn
+
+     2.33%     0.93%  rayforce  rayforce              [.] agg_key_directory_insert
+     2.31%     0.34%  rayforce  rayforce              [.] join_count_fn
+     2.19%     2.19%  rayforce  rayforce              [.] msd_bucket_sort_fn
+     2.19%     0.00%  rayforce  rayforce              [.] bucket_lsb_sort (inlined)
+            |
+            ---bucket_lsb_sort (inlined)
+
+     2.18%     0.00%  rayforce  rayforce              [.] exec_elementwise_tree (inlined)
+            |
+            ---exec_elementwise_tree (inlined)
+
+     2.04%     2.04%  rayforce  rayforce              [.] ray_alloc
+     2.01%     2.01%  rayforce  rayforce              [.] gbi_fill_fn
+
+
+#
+# (Tip: To record every process run by a user: perf record -u <user>)
+#

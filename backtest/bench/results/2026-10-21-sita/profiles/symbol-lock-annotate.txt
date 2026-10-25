@@ -1,0 +1,74 @@
+ Percent |	Source code & Disassembly of rayforce for cycles:u (17971 samples, percent: local period)
+---------------------------------------------------------------------------------------------------------
+         :
+         :
+         :
+         : 3      Disassembly of section .text:
+         :
+         : 5      0000000000473280 <ray_sym_str>:
+         : 6      /* Returned pointer is valid only while no concurrent ray_sym_intern occurs.
+         : 7      * Safe during read-only execution phase (after all interning is complete).
+         : 8      * Caller must not store the pointer across sym table mutations (ht_grow
+         : 9      * or strings realloc). */
+         : 10     ray_t* ray_sym_str(int64_t id) {
+         : 11     if (!atomic_load_explicit(&g_sym_inited, memory_order_acquire)) return NULL;
+    0.01 :   473280: movzbl 0x345ba1(%rip),%eax        # 7b8e28 <g_sym_inited>
+    0.00 :   473287: cmp    $0x1,%al
+    0.00 :   473289: jne    4732ef <ray_sym_str+0x6f>
+    0.00 :   47328b: push   %rbp
+    0.00 :   47328c: mov    %rsp,%rbp
+    0.00 :   47328f: push   %rbx
+    0.00 :   473290: push   %rax
+         : 19     while (atomic_exchange_explicit(&g_sym_lock_line.v, 1, memory_order_acquire)) {
+    0.01 :   473291: mov    $0x1,%eax
+    0.02 :   473296: xchg   %eax,0x345ae4(%rip)        # 7b8d80 <g_sym_lock_line>
+    7.27 :   47329c: test   %eax,%eax
+    0.62 :   47329e: je     4732b1 <ray_sym_str+0x31>
+         : 24     RAY_CPU_RELAX();
+    0.10 :   4732a0: pause
+         : 26     while (atomic_exchange_explicit(&g_sym_lock_line.v, 1, memory_order_acquire)) {
+    3.92 :   4732a2: mov    $0x1,%eax
+    0.01 :   4732a7: xchg   %eax,0x345ad3(%rip)        # 7b8d80 <g_sym_lock_line>
+   82.86 :   4732ad: test   %eax,%eax
+    5.00 :   4732af: jne    4732a0 <ray_sym_str+0x20>
+         :
+         : 32     /* Lock required: concurrent ray_sym_intern may realloc g_sym.strings. */
+         : 33     sym_lock();
+         : 34     if (id < 0 || (uint32_t)id >= g_sym.str_count) { sym_unlock(); return NULL; }
+    0.00 :   4732b1: test   %rdi,%rdi
+    0.12 :   4732b4: js     4732f2 <ray_sym_str+0x72>
+    0.01 :   4732b6: cmp    %edi,0x345b1c(%rip)        # 7b8dd8 <g_sym+0x18>
+    0.03 :   4732bc: jbe    4732f2 <ray_sym_str+0x72>
+         : 39     if (!g_sym.strings[id] && (uint32_t)id < g_sym.lazy_count) {
+    0.01 :   4732be: mov    0x345b0b(%rip),%rax        # 7b8dd0 <g_sym+0x10>
+    0.00 :   4732c5: mov    (%rax,%rdi,8),%rax
+    0.01 :   4732c9: test   %rax,%rax
+    0.01 :   4732cc: jne    4732f4 <ray_sym_str+0x74>
+    0.00 :   4732ce: cmp    %edi,0x345b34(%rip)        # 7b8e08 <g_sym+0x48>
+    0.00 :   4732d4: jbe    4732f4 <ray_sym_str+0x74>
+    0.00 :   4732d6: mov    %rdi,%rbx
+         : 47     if (!sym_lazy_materialize_to_locked((uint32_t)id)) {
+    0.00 :   4732d9: call   4730c0 <sym_lazy_materialize_to_locked>
+    0.00 :   4732de: test   %al,%al
+    0.00 :   4732e0: je     4732f2 <ray_sym_str+0x72>
+         : 51     sym_unlock();
+         : 52     return NULL;
+         : 53     }
+         : 54     }
+         : 55     ray_t* s = g_sym.strings[id];
+    0.00 :   4732e2: mov    0x345ae7(%rip),%rax        # 7b8dd0 <g_sym+0x10>
+    0.00 :   4732e9: mov    (%rax,%rbx,8),%rax
+    0.00 :   4732ed: jmp    4732f4 <ray_sym_str+0x74>
+    0.00 :   4732ef: xor    %eax,%eax
+         : 60     sym_unlock();
+         : 61     return s;
+         : 62     }
+    0.00 :   4732f1: ret
+    0.00 :   4732f2: xor    %eax,%eax
+         : 65     atomic_store_explicit(&g_sym_lock_line.v, 0, memory_order_release);
+    0.00 :   4732f4: movl   $0x0,0x345a82(%rip)        # 7b8d80 <g_sym_lock_line>
+    0.00 :   4732fe: add    $0x8,%rsp
+    0.00 :   473302: pop    %rbx
+    0.00 :   473303: pop    %rbp
+         : 70     }
+    0.00 :   473304: ret

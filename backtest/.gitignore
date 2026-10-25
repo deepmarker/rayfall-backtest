@@ -1,0 +1,5 @@
+out/
+# Built by `make data`; only the pinned *.sha256 files are committed.
+data/*/
+data/*.tmp/
+data/.cache/

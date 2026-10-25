@@ -1,0 +1,4 @@
+(library
+ (name backtest_reader)
+ (public_name rayfall-backtest.reader)
+ (libraries backtest_shared core async rayforce-ipc rayforce-ipc-async))

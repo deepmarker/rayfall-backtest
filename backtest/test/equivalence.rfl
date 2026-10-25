@@ -1,0 +1,94 @@
+;; The vectorised kernel (bt.rfl) against the scalar reference kernel
+;; (ref/bt_ref.rfl): every case runs on both, and all seven record tables must
+;; be identical. Cases cover the hand-calculated fixtures and the real
+;; snapshots under both buy policies, including a strategy that spends all its
+;; cash every day, so that buys are scaled and the REJECT chain falls back to
+;; the sequential path. It also checks that xsmom in features mode produces
+;; the same records as on the view.
+;; Run from backtest:  rayforce test/equivalence.rfl
+
+(load "test/assert.rfl")
+(load "bt.rfl")
+(load "report.rfl")
+(load "strategies/buyhold.rfl")
+(load "strategies/trend.rfl")
+(load "strategies/xsmom.rfl")
+
+(set records (fn [] (list bt.targets bt.orders bt.order_events bt.fills bt.ledger bt.positions bt.equity)))
+(set names ["targets" "orders" "order_events" "fills" "ledger" "positions" "equity"])
+
+;; run is a function of no arguments that performs one run on whichever
+;; kernel is loaded
+(set same (fn [name run]
+  (load "ref/bt_ref.rfl")
+  (run)
+  (set want (records))
+  (load "bt.rfl")
+  (run)
+  (set got (records))
+  (times [j (count want)]
+    (check_tbl (format "% %" name (at names j)) (at got j) (at want j)))
+  (bt_check_identities)
+  (bt_check_limits)))
+
+(set cfg_of (fn [cash0 fee_ppm start period steps wppm gppm policy]
+  (dict [cash0 fee_ppm start period steps max_weight_ppm max_gross_ppm buy_policy]
+        (list cash0 fee_ppm start period steps wppm gppm policy))))
+
+;; ---- fixture 1: gaps, a stale mark, NO_PRICE, partial closes
+(set d1 "test/fixture1/")
+(set f1_ins (read-csv [SYM I64 I64 I64] (concat d1 "instruments.csv")))
+(set f1_bars (read-csv [TIMESTAMP SYM I64 I64] (concat d1 "bars.csv")))
+(set f1_tg (read-csv [TIMESTAMP SYM I64] (concat d1 "targets.csv")))
+(set T0 2026.01.01D00:00:00.000)
+(set H 0D01:00:00)
+(same "fixture1" (fn [] (bt_run (cfg_of 100000 1000 T0 H 4 1000000000 1000000000 'REJECT) f1_ins f1_bars f1_tg)))
+(same "fixture1 scale" (fn [] (bt_run (cfg_of 100000 1000 T0 H 4 400000 900000 'SCALE) f1_ins f1_bars f1_tg)))
+
+;; ---- real snapshots
+(set load_snap (fn [dir]
+  (list (read-csv [SYM I64 I64 I64 STR STR] (concat dir "instruments.csv"))
+        (read-csv [TIMESTAMP SYM I64 I64 I64 I64 I64] (concat dir "bars.csv")))))
+(set s3 (load_snap "data/binance-spot-1d-2023-10_2026-09/"))
+(set s12 (load_snap "data/binance-spot12-1d-2023-10_2026-09/"))
+(set D0 2023.10.01D00:00:00.000)
+(set DAY 1D)
+(set run_cfg (fn [policy] (cfg_of 10000000000000 1000 D0 DAY 1096 400000 1000000 policy)))
+
+;; Spends all equity every day at the last close, split equally, with no
+;; buffer: the next open often costs more than the cash.
+(set allin_run (fn [ctx]
+  (let n (count (at ctx 'syms)))
+  (st_targets (at ctx 'syms) (st_lots_all ctx (take (/ 1.0 n) n) 1.0))))
+
+(set allin (bt_strategy 'allin {} allin_run 0Nl))
+(set cases (list (list "trend" strategies.trend s3) (list "buyhold" strategies.buyhold s3)
+                 (list "xsmom" strategies.xsmom_view s12)
+                 (list "allin3" allin s3) (list "allin12" allin s12)))
+(times [c (count cases)]
+  (set cs (at cases c))
+  (times [p 2]
+    (set policy (at [SCALE REJECT] p))
+    (same (format "% %" (at cs 0) policy)
+          (fn [] (bt_run_strategy (run_cfg policy) (at (at cs 2) 0) (at (at cs 2) 1) (at cs 1))))))
+
+;; ---- features mode: xsmom computed once by xsmom_prepare makes the same
+;; ---- decisions as xsmom on the view
+(load "bt.rfl")
+(times [p 2]
+  (set policy (at [SCALE REJECT] p))
+  (bt_run_strategy (run_cfg policy) (at s12 0) (at s12 1) strategies.xsmom_view)
+  (set want (records))
+  (bt_run_strategy (run_cfg policy) (at s12 0) (at s12 1) strategies.xsmom)
+  (set got (records))
+  (times [j (count want)]
+    (check_tbl (format "xsmom features % %" policy (at names j)) (at got j) (at want j))))
+
+;; the cases above reach the paths they are meant to
+(load "bt.rfl")
+(bt_run_strategy (run_cfg 'SCALE) (at s12 0) (at s12 1) allin)
+(check "SCALED buys occur" (> (count (select {from: bt.order_events where: (== reason 'SCALED)})) 0) true)
+(bt_run_strategy (run_cfg 'REJECT) (at s12 0) (at s12 1) allin)
+(check "REJECT runs out of cash" (> (count (select {from: bt.order_events where: (== reason 'INSUFFICIENT_CASH)})) 0) true)
+
+(println "PASS equivalence")

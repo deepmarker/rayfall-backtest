@@ -1,0 +1,56 @@
+;; Fixture 6: typed periods, exact nanosecond grids and long durations.
+;; Both kernels must preserve spans in the strategy context and timestamps
+;; in their records, including offsets beyond F64's exact integer range.
+;; Run from backtest: rayforce test/fixture6.rfl
+
+(load "test/assert.rfl")
+(load "report.rfl")
+
+(set span_cfg (fn [period]
+  (dict [cash0 fee_ppm start period steps max_weight_ppm max_gross_ppm buy_policy]
+        (list 1000 0 2026.01.01D00:00:00.000000001 period 3 1000000 1000000 'REJECT))))
+(set ins (table [sym mult min_qty min_notional] (list [X] [1] [1] [0])))
+(set ns 0D00:00:00.000000001)
+
+(times [kernel 2]
+  (load (at ["bt.rfl" "ref/bt_ref.rfl"] kernel))
+  (times [j 2]
+    (set period (at [0D00:00:00.000000003 100D00:00:00.000000001] j))
+    (set cfg (span_cfg period))
+    (set T0 (at cfg 'start))
+    (set ts (+ T0 (* (til 3) period)))
+    (set bars (table [ts sym o c] (list ts [X X X] [10 11 12] [10 11 12])))
+    (set tg (table [ts sym target] (list (enlist (at ts 1)) [X] [2])))
+    (bt_run cfg ins bars tg)
+    (check "period type" (type bt.period) 'timespan)
+    (check_col "equity" bt.equity 'ts (+ T0 (* (til 4) period)))
+    (check_col "equity" bt.equity 'equity [1000 1000 1000 1002])
+    (check_col "fills" bt.fills 'ts (enlist (at ts 1)))
+    (bt_check_identities)
+    (bt_check_attribution (bt_attribution))
+    (set want (list bt.targets bt.orders bt.order_events bt.fills bt.ledger bt.positions bt.equity))
+
+    (set strategy (bt_strategy 'spans {} (fn [ctx]
+                                           (check "context period" (at ctx 'period) period)
+                                           (check "context time" (at ctx 'T) (+ T0 (* (at ctx 'k) period)))
+                                           (check_col "completed bars" (at ctx 'view) 'ts (take ts (at ctx 'k)))
+                                           (if (== (at ctx 'k) 1) (table [sym target] (list [X] [2]))
+                                               (table [sym target] (list (as 'SYM []) (as 'I64 []))))) 0Nl))
+    (bt_run_strategy cfg ins bars strategy)
+    (set got (list bt.targets bt.orders bt.order_events bt.fills bt.ledger bt.positions bt.equity))
+    (times [r (count want)]
+      (check_tbl "strategy span records" (at got r) (at want r)))
+
+    (set bad_bars (table [ts sym o c] (list (enlist (+ T0 ns)) [X] [10] [10])))
+    (check_raises "nanosecond off-grid bar" (fn [] (bt_run cfg ins bad_bars bt_no_targets))
+                  "bt: invalid input: bars off the grid")
+    (set bad_tg (table [ts sym target] (list (enlist (- T0 period)) [X] [2])))
+    (check_raises "target before start" (fn [] (bt_run cfg ins bars bad_tg))
+                  "bt: invalid input: targets outside*"))
+
+  (set bad_periods (list 1 0D -1D 0Nn 01:00:00.000))
+  (times [j (count bad_periods)]
+    (check_raises "invalid period" (fn [] (bt_run (span_cfg (at bad_periods j)) ins bars bt_no_targets))
+                  "bt: invalid input: period must be a positive TIMESPAN")))
+
+(println "PASS fixture6")

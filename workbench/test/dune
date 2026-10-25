@@ -1,0 +1,41 @@
+(test
+ (name shared_test)
+ (modules shared_test)
+ (libraries backtest_shared core)
+ (deps
+  (glob_files fixtures/fixture1/*.csv)))
+
+(executable
+ (name live_test)
+ (modules live_test)
+ (libraries backtest_shared backtest_reader core async rayforce-ipc))
+
+(test
+ (name codec_test)
+ (modules codec_test)
+ (libraries backtest_shared backtest_reader core rayforce-ipc))
+
+(test
+ (name bundle_test)
+ (modules bundle_test)
+ (libraries core async backtest_bundle backtest_shared rayforce-ipc))
+
+(test
+ (name chart_test)
+ (modules chart_test)
+ (libraries core backtest_shared backtest_viewer))
+
+(executable
+ (name viewer_live_test)
+ (modules viewer_live_test)
+ (libraries core async backtest_shared backtest_viewer))
+
+(executable
+ (name launcher_live_test)
+ (modules launcher_live_test)
+ (libraries core async backtest_shared backtest_viewer))
+
+(test
+ (name folder_dialog_test)
+ (modules folder_dialog_test)
+ (libraries core async backtest_viewer))

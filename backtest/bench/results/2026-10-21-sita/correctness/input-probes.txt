@@ -1,0 +1,8 @@
+[null bar time bt: invalid input: bars outside [start, end)]
+[null multiplier bt: invalid input: mult must be positive]
+[negative fee 'accepted]
+[identity check true]
+[null fee 'accepted]
+[identity check bt: equity != cash0 + realized + unrealized - fees]
+[missing fee 'accepted]
+[identity check bt: equity != cash0 + realized + unrealized - fees]

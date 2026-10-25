@@ -1,0 +1,11 @@
+;; Isolate the already-sorted (timestamp, symbol) scan from CSV load and backtesting.
+;; Run from backtest. -numeric 1 replaces symbols with lexically ordered
+;; integer ranks in the comparison table only; this is a diagnostic control.
+(set a (at (.sys.args) 'user))
+(set bars (read-csv [TIMESTAMP SYM I64 I64 I64 I64 I64] "data/synth-1h-100/bars.csv"))
+(set ranks (find (asc (distinct (at bars 'sym))) (at bars 'sym)))
+(set b (if (== (at a 'numeric) "1")
+           (table [ts sym] (list (at bars 'ts) ranks))
+           (table [ts sym] (list (at bars 'ts) (at bars 'sym)))))
+(set ms (timeit (set sorted (xasc b [ts sym]))))
+(println (format "{\"rows\": %, \"sort_ms\": %, \"numeric\": %}" (count sorted) ms (at a 'numeric)))

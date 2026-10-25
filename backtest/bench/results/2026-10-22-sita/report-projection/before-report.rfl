@@ -1,0 +1,139 @@
+;; Analysis of a finished bt run (bt.rfl globals). Integer accounting is exact;
+;; metrics are F64 and only describe it.
+;;
+;; Conventions: crypto trades every day, so daily returns annualise with 365
+;; periods. Metrics cover the evaluation window, from the first decision day
+;; (index `from_k` on the grid) to the end; the risk-free rate is 0.
+
+;; Per-instrument P&L for each interval (T - period, T], exact in cash units:
+;;   pnl(T, i) = mv(T, i) - mv(T - period, i) + sells(i) - buys(i)
+;; where buys/sells are fill notionals at T - period (fills happen after the
+;; snapshot). Summed over instruments and less the fees of those fills, it is
+;; exactly equity(T) - equity(T - period).
+(set bt_attribution (fn []
+  (let pos (xasc bt.positions [sym ts]))
+  ;; Locals must not share a name with a column used in a query below:
+  ;; inside a lambda a local shadows the column (rayforce#781).
+  (let moves (select {from: pos by: {sym: sym} ts: ts dmv: (deltas mv)}))
+  (let flow (select {from: bt.fills by: {ts: ts sym: sym}
+                     cash_in: (sum (* notional (- (* 2 (== side 'SELL)) 1)))
+                     fee: (sum fee)}))
+  (let flow (update {from: flow ts: (+ ts bt.period)}))
+  (let a (left-join [ts sym] (ungroup moves) flow))
+  (let a (update {from: a
+                  dmv: (fill 0 dmv)
+                  cash_in: (fill 0 cash_in)
+                  fee: (fill 0 fee)}))
+  (xasc (update {from: a pnl: (+ dmv cash_in)}) [ts sym])))
+
+;; Every interval's equity change equals attributed P&L less fees; raises if not.
+(set bt_check_attribution (fn [a]
+  (let per (select {from: a by: {ts: ts} pnl: (sum pnl) fee: (sum fee)}))
+  (let per (xasc per 'ts))
+  (let eq (xasc bt.equity 'ts))
+  (let de (drop (deltas (at eq 'equity)) 1))
+  (let explained (drop (- (at per 'pnl) (at per 'fee)) 1))
+  (if (not (all (== de explained)))
+      (raise "bt: attribution does not explain the equity changes"))
+  true))
+
+;; Identities that hold exactly for any run; raises on the first failure.
+(set bt_check_identities (fn []
+  (let e bt.equity)
+  (if (not (all (== (- (at e 'equity) bt.cash0)
+                    (- (+ (at e 'realized) (at e 'unrealized)) (at e 'fees)))))
+      (raise "bt: equity != cash0 + realized + unrealized - fees"))
+  (if (!= (+ bt.cash0 (sum (at bt.ledger 'cash_delta))) bt.cash)
+      (raise "bt: ledger cash does not reconcile"))
+  (if (!= (sum (at bt.fills 'fee)) bt.fees)
+      (raise "bt: fills fees do not reconcile"))
+  (if (!= (neg (sum (at (select {from: bt.ledger where: (== kind 'FEE)}) 'cash_delta))) bt.fees)
+      (raise "bt: ledger fees do not reconcile"))
+  (let trades (select {from: bt.ledger where: (== kind 'TRADE)}))
+  (if (!= (sum (at bt.fills 'notional)) (sum (abs (at trades 'cash_delta))))
+      (raise "bt: traded notional in fills and ledger differs"))
+  (let held (select {from: bt.ledger by: {sym: sym} q: (sum qty_delta)}))
+  (if (not (all (== (at held 'q) (at bt.qty (find bt.syms (at held 'sym))))))
+      (raise "bt: positions do not reconcile to the ledger"))
+  (if (any (< (at bt.equity 'cash) 0)) (raise "bt: cash went negative"))
+  (if (any (< (at bt.positions 'qty) 0)) (raise "bt: a position went negative"))
+  (let filled (at bt.fills 'qty))
+  (if (any (> filled (at bt.o_qty (at bt.fills 'order_id))))
+      (raise "bt: a fill exceeds its order"))
+  true))
+
+;; Every decision kept the position limits: each requested target, valued at
+;; the decision-time mark, is at most max_weight of pre-trade equity, and the
+;; requested targets together fit in the room max_gross of equity leaves beside
+;; the positions held without a request. Raises if not.
+(set bt_check_limits (fn []
+  (let end (+ bt.start (* bt.steps bt.period)))
+  (let p (select {from: bt.positions where: (< ts end)}))
+  (let tg (select {from: bt.targets tgt: target ts: ts sym: sym}))
+  (let eqt (select {from: bt.equity ts: ts eqv: equity}))
+  (let j (left-join [ts] (left-join [ts sym] p tg) eqt))
+  (let tq (at j 'tgt))
+  (let asked (not (nil? tq)))
+  (let ev (+ (* (as 'I64 asked) (fill 0 tq)) (* (as 'I64 (not asked)) (at j 'qty))))
+  (let lots_value (* (* ev (fill 0 (at j 'mark))) (at bt.mult (find bt.syms (at j 'sym)))))
+  (let vals (* lots_value (as 'I64 (> ev 0))))
+  (let eqs (at j 'eqv))
+  (if (any (and asked (> vals (bt_ppm_of eqs bt.max_weight_ppm))))
+      (raise "bt: a target exceeds max_weight"))
+  (let g (select {from: (table [t1 r1 h1 e1] (list (at j 'ts) (* vals (as 'I64 asked))
+                                                   (* vals (as 'I64 (not asked))) eqs))
+                  by: {t1: t1} req: (sum r1) hv: (sum h1) eq1: (first e1)}))
+  (let room (- (bt_ppm_of (at g 'eq1) bt.max_gross_ppm) (at g 'hv)))
+  (if (any (> (at g 'req) (* room (as 'I64 (> room 0)))))
+      (raise "bt: targets exceed max_gross"))
+  true))
+
+(set bt_round (fn [x digits] (/ (round (* x (pow 10.0 digits))) (pow 10.0 digits))))
+
+;; Metrics over [from_k, end] of the equity snapshots.
+(set bt_metrics (fn [from_k]
+  (let e (drop (xasc bt.equity 'ts) from_k))
+  (let eq (as 'F64 (at e 'equity)))
+  (let r (drop (- (ratios eq) 1.0) 1))
+  (let days (- (count eq) 1))
+  (let growth (/ (last eq) (first eq)))
+  (let vol (* (stddev r) (sqrt 365.0)))
+  ;; Outside the query: inside one, 'ts names the source column.
+  (let from_ts (first (at e 'ts)))
+  (let fills (select {from: bt.fills where: (>= ts from_ts)}))
+  (let fees (as 'F64 (sum (at fills 'fee))))
+  (let traded (as 'F64 (sum (at fills 'notional))))
+  (let pnl (- (last eq) (first eq)))
+  (let limited (count (select {from: bt.targets where: (and (>= ts from_ts) (not (nil? limit)))})))
+  (let scaled (count (select {from: bt.order_events where: (and (>= ts from_ts) (== reason 'SCALED))})))
+  (dict [days total_return cagr ann_vol sharpe max_drawdown
+         net_pnl gross_pnl fees turnover_ann trades avg_exposure limited scaled]
+        (list days
+              (- growth 1.0)
+              (- (pow growth (/ 365.0 days)) 1.0)
+              vol
+              (/ (* (avg r) 365.0) vol)
+              (min (- (/ eq (maxs eq)) 1.0))
+              pnl
+              (+ pnl fees)
+              fees
+              (/ (/ traded (avg eq)) (/ days 365.0))
+              (count fills)
+              (avg (/ (as 'F64 (at e 'mv)) eq))
+              limited
+              scaled))))
+
+;; Per-instrument totals over [from_k, end].
+(set bt_attribution_by_sym (fn [a from_ts]
+  (xasc (select {from: a where: (> ts from_ts) by: {sym: sym}
+                 pnl: (sum pnl) fees: (sum fee)}) 'sym)))
+
+;; Write every record table of the current run to dir as CSV.
+(set bt_write_outputs (fn [dir]
+  (.csv.write bt.targets (concat dir "targets.csv"))
+  (.csv.write bt.orders (concat dir "orders.csv"))
+  (.csv.write bt.order_events (concat dir "order_events.csv"))
+  (.csv.write bt.fills (concat dir "fills.csv"))
+  (.csv.write bt.ledger (concat dir "ledger.csv"))
+  (.csv.write bt.positions (concat dir "positions.csv"))
+  (.csv.write bt.equity (concat dir "equity.csv"))))

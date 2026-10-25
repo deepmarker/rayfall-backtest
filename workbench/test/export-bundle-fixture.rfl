@@ -1,0 +1,21 @@
+;; Producer receives absolute paths from the publisher, and a backtester CWD.
+(load "test/fixture1.rfl")
+(load "report.rfl")
+(set bundle_fixture_args (at (.sys.args) 'user))
+(load (at bundle_fixture_args 'service))
+(load (at bundle_fixture_args 'bundle_module))
+(wb_publish "fixture1"
+  (dict [framework_revision snapshot_sha256 rayforce_binary_sha256 rayforce_version config_text parameter_text]
+    (list "fixture" "fixture" "fixture" "fixture" (format "%" cfg)
+      (dict [fixture] (list "fixture1.rfl"))))
+  (dict [fixture] (list (wb_capture)))
+  (dict [fixture] (list (wb_summary 0))))
+(wb_save_staged (at bundle_fixture_args 'directory)
+  (dict [effective_config parameters snapshot cash_scale instruments]
+    (list cfg
+      (dict [fixture] (list (dict [exact span at nested] (list 9007199254740993
+        0D00:00:00.000000001 2026.01.01D00:00:00.000000001 (list null 'SYMBOL true "text")))))
+      (dict [directory sha256sums_sha256] (list "test/fixture1" "fixture"))
+      null
+      (list (dict [symbol multiplier tick_decimal lot_decimal] (list "A" 1 null null))
+            (dict [symbol multiplier tick_decimal lot_decimal] (list "B" 10 null null))))))

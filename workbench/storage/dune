@@ -1,0 +1,14 @@
+(library
+ (name backtest_bundle)
+ (public_name rayfall-backtest.bundle)
+ (libraries
+  core
+  async
+  backtest_shared
+  backtest_reader
+  rayforce-ipc
+  yojson
+  digestif)
+ (foreign_stubs
+  (language c)
+  (names atomic_publish_stubs)))

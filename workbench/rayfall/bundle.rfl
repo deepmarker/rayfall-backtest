@@ -1,0 +1,104 @@
+;; Native saved-run format v1. Load after service.rfl; no backtester dependency.
+(set wb_schema_names (list [ts sym requested target limit]
+  [order_id ts sym side qty target pos_before]
+  [seq ts order_id event reason]
+  [order_id ts sym side qty price notional fee basis_removed realized]
+  [seq ts order_id sym kind cash_delta qty_delta]
+  [ts sym qty basis mark mark_ts mv unrealized]
+  [ts cash mv equity realized fees unrealized]
+  [sym ts dmv cash_in fee pnl]))
+(set wb_schema_types (list [TIMESTAMP SYM I64 I64 SYM]
+  [I64 TIMESTAMP SYM SYM I64 I64 I64]
+  [I64 TIMESTAMP I64 SYM SYM]
+  [I64 TIMESTAMP SYM SYM I64 I64 I64 I64 I64 I64]
+  [I64 TIMESTAMP I64 SYM SYM I64 I64]
+  [TIMESTAMP SYM I64 I64 I64 TIMESTAMP I64 I64]
+  [TIMESTAMP I64 I64 I64 I64 I64 I64]
+  [SYM TIMESTAMP I64 I64 I64 I64]))
+(set wb_nullable (list [limit] (take [x] 0) [reason] (take [x] 0)
+  (take [x] 0) [mark mark_ts] (take [x] 0) (take [x] 0)))
+
+(set wb_check_table (fn [t k]
+  (let names (at wb_schema_names k))
+  (if (!= (count (cols t)) (count names)) (raise "bundle: column count mismatch"))
+  (if (not (all (== (cols t) names))) (raise "bundle: column names mismatch"))
+  (times [j (count names)]
+    (let name (at names j))
+    (let values (at t name))
+    (if (!= (type values) (at (at wb_schema_types k) j)) (raise "bundle: column type mismatch"))
+    (if (and (not (in name (at wb_nullable k))) (any (nil? values)))
+        (raise "bundle: unexpected null"))
+    (if (== (type values) 'TIMESTAMP)
+      (do
+        (let ns (as 'I64 values))
+        (let present (at ns (where (not (nil? ns)))))
+        (if (any (or (< present -5558370818427387904) (> present 3665001218427387903)))
+            (raise "bundle: timestamp outside Core Time_ns range")))))
+  t))
+
+(set wb_unindex (fn [t k]
+  (let names (at wb_schema_names k))
+  (let raw (table names (take (value t) (count names))))
+  (wb_check_table raw k)))
+
+;; Write only into the staging directory supplied by the OCaml publisher.
+;; Options: effective_config, parameters, snapshot, cash_scale, instruments.
+(set wb_save_staged (fn [directory options]
+  (if (== wb_run "") (raise "bundle: no published snapshot"))
+  (if (>= (try (.fs.size (concat directory "/COMPLETED")) (fn [e] -1)) 0)
+      (raise "bundle: cannot overwrite a completed run"))
+  (if (>= (try (.fs.size (concat directory "/metadata.rfn")) (fn [e] -1)) 0)
+      (raise "bundle: staging metadata already exists"))
+  (let strategies (key wb_datasets))
+  (let counts (map (fn [s]
+    (let tables (at wb_datasets s))
+    (map count (value tables))) strategies))
+  (times [i (count strategies)]
+    (let tables (at wb_datasets (at strategies i)))
+    (times [k (count wb_names)]
+      (let path (format "%/tables/%/%" directory i (at wb_names k)))
+      (let raw (wb_unindex (at tables (at wb_names k)) k))
+      (.db.splayed.set path raw)
+      (let restored (wb_check_table (.db.splayed.get path) k))
+      (times [j (count (cols raw))]
+        (let name (at (cols raw) j))
+        (let before (at raw name))
+        (let after (at restored name))
+        (if (not (all (or (and (nil? before) (nil? after)) (== before after))))
+            (raise "bundle: native round trip changed values")))))
+  (let details (dict [version effective_config parameters snapshot cash_scale instruments]
+    (list 1 (at options 'effective_config) (at options 'parameters)
+      (at options 'snapshot) (at options 'cash_scale) (at options 'instruments))))
+  (let manifest (dict [version run metadata strategies summaries details rows]
+    (list 1 wb_run wb_metadata strategies wb_summaries details counts)))
+  (write-bytes (concat directory "/metadata.rfn") (ser manifest))
+  null))
+
+;; The publisher checks file hashes before startup. This also validates native
+;; schemas/counts on every reopen, without loading or executing strategy code.
+(set wb_open_staged (fn [directory]
+  (let manifest (de (read-bytes (concat directory "/metadata.rfn"))))
+  (if (!= (at manifest 'version) 1) (raise "bundle: unsupported version"))
+  (let strategies (at manifest 'strategies))
+  (if (or (!= (type strategies) 'SYM) (== (count strategies) 0)
+          (!= (count (distinct strategies)) (count strategies)))
+      (raise "bundle: invalid strategies"))
+  (let counts (at manifest 'rows))
+  (if (!= (count counts) (count strategies)) (raise "bundle: invalid row counts"))
+  (let datasets (map (fn [i]
+    (let expected (at counts i))
+    (if (!= (count expected) (count wb_names)) (raise "bundle: invalid row counts"))
+    (dict wb_names (map (fn [k]
+      (let path (format "%/tables/%/%" directory i (at wb_names k)))
+      (let t (wb_check_table (.db.splayed.get path) k))
+      (if (!= (count t) (at expected k)) (raise "bundle: row count mismatch"))
+      t) (til (count wb_names))))) (til (count strategies))))
+  (wb_publish (at manifest 'run) (at manifest 'metadata)
+    (dict strategies datasets) (at manifest 'summaries))
+  (set wb_bundle_details (at manifest 'details))
+  null))
+
+(set wb_open (fn [directory]
+  (if (!= (read (concat directory "/COMPLETED")) "workbench-bundle-v1\n")
+      (raise "bundle: incomplete publication"))
+  (wb_open_staged directory)))

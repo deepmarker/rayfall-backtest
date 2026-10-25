@@ -1,0 +1,53 @@
+;; Helpers shared by the example strategies. A strategy file registers a
+;; descriptor, (bt_strategy name params run prepare), under strategies.<name>;
+;; run receives the ctx built by bt_strategy_targets (bt.rfl), params
+;; included, and returns a table [sym target] in lots.
+
+;; Both examples start trading on the same decision day, so they are compared
+;; over the same period. The first decision day is index `warmup`: day d sees
+;; d completed bars per instrument.
+(set st_warmup 91)
+
+;; Day index of the decision time T on the run grid.
+(set st_day (fn [ctx] (at ctx 'k)))
+
+;; Completed closes of one instrument, oldest first.
+(set st_closes (fn [ctx s]
+  (at (xasc (select {from: (at ctx 'view) where: (== sym s)}) 'ts) 'c)))
+
+;; Lots for weight w of pre-trade equity at the last close of instrument i,
+;; keeping `buffer` of equity back to absorb the fee and the gap between the
+;; last close and the next open. Rounds down.
+(set st_lots (fn [ctx i w buffer]
+  (let px (at (at ctx 'mark) i))
+  (let lot_value (* px (at (at ctx 'mult) i)))
+  (as 'I64 (floor (/ (* (* w buffer) (at ctx 'equity)) lot_value)))))
+
+(set st_targets (fn [syms lots]
+  (table [sym target] (list syms (as 'I64 lots)))))
+
+(set st_hold (table [sym target] (list (as 'SYM []) (as 'I64 []))))
+
+;; ---- portfolio helpers (cross-sectional strategies)
+
+;; Completed bars per instrument, in syms order; 0 for one with no bars yet.
+(set st_bar_counts (fn [ctx]
+  (let g (select {from: (at ctx 'view) nb: (count c) by: sym}))
+  (fill 0 (at (at g 'nb) (find (at g 'sym) (at ctx 'syms))))))
+
+;; Instruments a decision at T may trade, as a B8 vector in syms order: marked
+;; at T (the last bar closed at T, so the mark is not stale) and with at least
+;; n completed bars.
+(set st_eligible (fn [ctx n]
+  (and (== (at ctx 'mark_ts) (at ctx 'T)) (>= (st_bar_counts ctx) n))))
+
+;; syms ordered by score, highest first; equal scores in ascending sym order,
+;; so a ranking never depends on row order.
+(set st_rank (fn [syms scores]
+  (at (select {from: (table [sym score] (list syms scores)) desc: score asc: sym}) 'sym)))
+
+;; Lots for weights w (F64, in syms order) of pre-trade equity, keeping
+;; `buffer` back; 0 for an instrument without a mark. Rounds down.
+(set st_lots_all (fn [ctx w buffer]
+  (let lot_value (* (at ctx 'mark) (at ctx 'mult)))
+  (fill 0 (as 'I64 (floor (/ (* (* w buffer) (at ctx 'equity)) lot_value))))))

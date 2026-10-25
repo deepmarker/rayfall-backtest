@@ -1,0 +1,112 @@
+[
+  {
+    "probe": "typed",
+    "participants": 1,
+    "timestamp": 0,
+    "median_ms": 11.3357885,
+    "min_ms": 10.151505,
+    "max_ms": 19.758939
+  },
+  {
+    "probe": "typed",
+    "participants": 1,
+    "timestamp": 1,
+    "median_ms": 11.007311999999999,
+    "min_ms": 10.104717,
+    "max_ms": 13.410993
+  },
+  {
+    "probe": "typed",
+    "participants": 4,
+    "timestamp": 0,
+    "median_ms": 10.683639,
+    "min_ms": 10.066816,
+    "max_ms": 11.280995
+  },
+  {
+    "probe": "typed",
+    "participants": 4,
+    "timestamp": 1,
+    "median_ms": 10.815983,
+    "min_ms": 10.095169,
+    "max_ms": 12.432647
+  },
+  {
+    "probe": "constant_work",
+    "case": "case=0",
+    "desc": 0,
+    "median_ms": 0.09041
+  },
+  {
+    "probe": "constant_work",
+    "case": "case=0",
+    "desc": 1,
+    "median_ms": 0.083206
+  },
+  {
+    "probe": "constant_work",
+    "case": "case=1",
+    "desc": 0,
+    "median_ms": 0.084539
+  },
+  {
+    "probe": "constant_work",
+    "case": "case=1",
+    "desc": 1,
+    "median_ms": 0.082795
+  },
+  {
+    "probe": "constant_work",
+    "case": "case=2",
+    "desc": 0,
+    "median_ms": 0.549451
+  },
+  {
+    "probe": "constant_work",
+    "case": "case=2",
+    "desc": 1,
+    "median_ms": 0.111479
+  },
+  {
+    "probe": "unsorted_work",
+    "case": "early",
+    "desc": 0,
+    "median_ms": 3.195188
+  },
+  {
+    "probe": "unsorted_work",
+    "case": "early",
+    "desc": 1,
+    "median_ms": 2.747718
+  },
+  {
+    "probe": "unsorted_work",
+    "case": "late",
+    "desc": 0,
+    "median_ms": 3.222819
+  },
+  {
+    "probe": "unsorted_work",
+    "case": "late",
+    "desc": 1,
+    "median_ms": 3.102694
+  },
+  {
+    "probe": "unsorted_work",
+    "case": "serial",
+    "desc": 0,
+    "median_ms": 2.988609
+  },
+  {
+    "probe": "unsorted_work",
+    "case": "small",
+    "desc": 0,
+    "median_ms": 0.023855
+  },
+  {
+    "probe": "unsorted_work",
+    "case": "small",
+    "desc": 1,
+    "median_ms": 0.002294
+  }
+]

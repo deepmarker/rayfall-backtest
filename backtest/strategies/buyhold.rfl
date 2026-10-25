@@ -1,0 +1,16 @@
+;; Equal-weight buy-and-hold baseline for trend.rfl.
+;;
+;; On the warm-up day, buy 1/n of pre-trade equity in each instrument (with the
+;; same cash buffer, costs and execution as the trend strategy), then hold.
+
+(load "strategies/common.rfl")
+
+(set buyhold (fn [ctx]
+  (if (!= (st_day ctx) st_warmup) st_hold
+      (do
+        (let syms (at ctx 'syms))
+        (let n (count syms))
+        (st_targets syms
+                    (map (fn [i] (st_lots ctx i (/ 1.0 n) (at (at ctx 'params) 'buffer))) (til n)))))))
+
+(set strategies.buyhold (bt_strategy 'buyhold {buffer: 0.98} buyhold 0Nl))

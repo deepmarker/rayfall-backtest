@@ -1,0 +1,4 @@
+  join_buildside/left_identity_radix                    FAIL
+        test/test_join_buildside.c:1406: *(int64_t*)ray_vec_get(out_right_id, i) == key: left and right payloads remain matched after reorder
+
+=== 0 of 1 passed (0 skipped, 1 failed) ===

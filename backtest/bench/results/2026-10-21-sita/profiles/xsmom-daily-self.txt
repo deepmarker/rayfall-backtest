@@ -1,0 +1,34 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 6K of event 'cycles:u'
+# Event count (approx.): 13334337768
+#
+# Overhead       Samples  Command   Shared Object         Symbol                              
+# ........  ............  ........  ....................  ....................................
+#
+    21.94%          1397  rayforce  rayforce              [.] expr_load_i64
+    12.78%           382  rayforce  rayforce              [.] ray_sym_str
+    10.23%           679  rayforce  rayforce              [.] rowsel_emit_segment
+     9.05%           600  rayforce  rayforce              [.] multi_gather_fn
+     5.49%           504  rayforce  rayforce              [.] expr_eval_morsel
+     5.08%           160  rayforce  rayforce              [.] pool_run_window
+     4.14%           116  rayforce  rayforce              [.] col_propagate_nulls_gather
+     3.41%            95  rayforce  libc.so.6             [.] 0x000000000018f437
+     3.15%            92  rayforce  rayforce              [.] ray_vec_is_null
+     3.10%            81  rayforce  libc.so.6             [.] 0x000000000018f38b
+     2.31%            69  rayforce  rayforce              [.] sel_compact
+     1.87%           225  rayforce  rayforce              [.] pool_run_steal
+     1.39%            65  rayforce  rayforce              [.] agg_key_eq_at
+     1.15%            34  rayforce  rayforce              [.] ray_free_last_ref
+     0.81%            33  rayforce  rayforce              [.] agg_key_directory_insert
+     0.81%            62  rayforce  rayforce              [.] ray_alloc
+     0.67%            24  rayforce  libc.so.6             [.] 0x000000000018f3f8
+     0.61%            17  rayforce  rayforce              [.] sorted_check_fn
+
+
+#
+# (Tip: List events using substring match: perf list <keyword>)
+#

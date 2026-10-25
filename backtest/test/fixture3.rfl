@@ -1,0 +1,97 @@
+;; Fixture 3: the strategy API. Causality under future-data perturbation on the
+;; real snapshot, strategy result validation, submission rules that depend on
+;; the decision-time mark, and exact P&L attribution on fixture 1.
+;; Run from backtest:  rayforce test/fixture3.rfl
+
+(load "bt.rfl")
+(load "report.rfl")
+(load "test/assert.rfl")
+(load "test/causal.rfl")
+(load "strategies/buyhold.rfl")
+(load "strategies/trend.rfl")
+
+;; ---- causality: perturbing bars from day D on leaves every decision before
+;; ---- and at D unchanged (they only see closes of bars ending at or before D)
+(set D_dir "data/binance-spot-1d-2023-10_2026-09/")
+(set ins (read-csv [SYM I64 I64 I64 STR STR] (concat D_dir "instruments.csv")))
+(set bars (read-csv [TIMESTAMP SYM I64 I64 I64 I64 I64] (concat D_dir "bars.csv")))
+(set cfg {cash0: 10000000000000 fee_ppm: 1000 start: 2023.10.01D00:00:00.000 period: 1D steps: 1096
+          max_weight_ppm: 1000000000 max_gross_ppm: 1000000000 buy_policy: 'REJECT})
+(set Dk 497)                                       ; a trend rebalance day: (497 - 91) % 7 = 0
+(set D (+ (at cfg 'start) (* Dk (at cfg 'period))))
+(set f (+ 1 (* 2 (>= (at bars 'ts) D))))         ; x3 from D on
+(set perturbed (update {from: bars o: (* o f) h: (* h f) l: (* l f) c: (* c f)}))
+
+;; A probe whose targets digest its whole view every day: any bar leaking into
+;; a decision at or before D changes some target there, whatever a real
+;; strategy would do with it. Targets are recorded before submission rules
+;; (most of these orders are then rejected for cash).
+(set probe (fn [ctx]
+  (let v (at ctx 'view))
+  (let syms (at ctx 'syms))
+  (st_targets syms
+              (map (fn [s] (% (sum (at (select {from: v where: (== sym s)}) 'c)) 1000)) syms))))
+
+(causal "probe" (bt_strategy 'probe {} probe 0Nl))
+(causal "trend" strategies.trend)
+(causal "buyhold" strategies.buyhold)
+
+;; ---- strategy result validation
+(set T0 2026.01.01D00:00:00.000)
+(set H 0D01:00:00)
+(set tcfg {cash0: 100000 fee_ppm: 0 start: 2026.01.01D00:00:00.000 period: 0D01:00:00 steps: 3
+           max_weight_ppm: 1000000000 max_gross_ppm: 1000000000 buy_policy: 'REJECT})
+(set tins (table [sym mult min_qty min_notional] (list [X Y] [1 1] [1 1] [0 500])))
+(set tbars (table [ts sym o c]
+                  (list (enlist T0 T0 (+ T0 H) (+ T0 H) (+ T0 (* 2 H)) (+ T0 (* 2 H)))
+                        [X Y X Y X Y] [10 100 10 100 10 100] [10 100 10 100 10 100])))
+(set returns (fn [r] (fn [] (bt_run_strategy tcfg tins tbars (bt_strategy 'fixed {} (fn [ctx] r) 0Nl)))))
+(check_raises "a bare function is not a strategy" (fn [] (bt_run_strategy tcfg tins tbars (fn [ctx] st_hold)))
+              "bt: strategy must be a descriptor*")
+(check_raises "params must be a dict" (fn [] (bt_run_strategy tcfg tins tbars (bt_strategy 'p 5 (fn [ctx] st_hold) 0Nl)))
+              "bt: strategy params must be a dictionary")
+(check_raises "not a table" (returns 5) "bt: strategy must return a table*")
+(check_raises "F64 targets" (returns (table [sym target] (list [X] [1.5]))) "bt: strategy target column must be I64*")
+(check_raises "null target" (returns (table [sym target] (list [X] [0Nl]))) "bt: strategy returned a null*")
+(check_raises "unknown sym" (returns (table [sym target] (list [Z] [1]))) "bt: strategy returned an unknown*")
+(check_raises "duplicate sym" (returns (table [sym target] (list [X X] [1 2]))) "bt: strategy returned a symbol twice")
+
+;; ---- submission rules at the decision-time mark: at T0 nothing is marked
+;; ---- yet; Y's min notional is 500 cash units (4 lots * 100 = 400 < 500)
+(bt_run_strategy tcfg tins tbars
+                 (bt_strategy 'marks {}
+                              (fn [ctx] (if (== (at ctx 'k) 0) (table [sym target] (list [X] [1]))
+                                            (== (at ctx 'k) 1) (table [sym target] (list [Y] [4]))
+                                            (table [sym target] (list [Y] [5]))))
+                              0Nl))
+(check "mark rules" (at (select {from: bt.order_events where: (== event 'REJECTED)}) 'reason)
+       [NO_MARK BELOW_MIN_NOTIONAL])
+(check_col "targets recorded" bt.targets 'sym [X Y Y])
+(check_col "filled" bt.fills 'qty [5])
+
+;; ---- the view: decisions at T see exactly the bars with ts + period <= T
+(set seen (as 'I64 []))
+(bt_run_strategy tcfg tins tbars
+                 (bt_strategy 'view {} (fn [ctx] (set seen (concat seen (count (at ctx 'view)))) st_hold) 0Nl))
+(check "view sizes" seen [0 2 4])
+
+;; ---- attribution explains fixture 1's equity changes exactly
+(set dir "test/fixture1/")
+(bt_run {cash0: 100000 fee_ppm: 1000 start: 2026.01.01D00:00:00.000 period: 0D01:00:00 steps: 4
+         max_weight_ppm: 1000000000 max_gross_ppm: 1000000000 buy_policy: 'REJECT}
+        (read-csv [SYM I64 I64 I64] (concat dir "instruments.csv"))
+        (read-csv [TIMESTAMP SYM I64 I64] (concat dir "bars.csv"))
+        (read-csv [TIMESTAMP SYM I64] (concat dir "targets.csv")))
+(bt_check_identities)
+(set a (bt_attribution))
+(bt_check_attribution a)
+;; T2: A 500 bought @103, marked 101: -1000. B flat.
+;; T3: A 300 sold @99 from 101 (-600), 200 kept 101 -> 104 (+600): 0.
+;;     B 100 bought @52, marked 50, x10: -2000.
+;; T4: A 200 kept 104 -> 106 (+400), 200 bought @105 -> 106 (+200): 600.
+;;     B stale at 50: 0.
+;; Check: equity T2->T3 = 0 - 2000 - (30 + 52) = -2082; T3->T4 = 600 - 21 = 579.
+(check_col "attribution" a 'pnl [0 0 0 0 -1000 0 0 -2000 600 0])
+(check_col "attribution" a 'fee [0 0 0 0 52 0 30 52 21 0])
+
+(println "PASS fixture3")

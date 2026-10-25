@@ -1,0 +1,49 @@
+name: CI
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  headless:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.5.1
+      - name: Install headless dependencies
+        run: opam exec -- make deps
+      - name: Build pinned Rayforce
+        run: |
+          bash ci/build-rayforce.sh "$RUNNER_TEMP/rayforce"
+          echo "$RUNNER_TEMP/rayforce" >> "$GITHUB_PATH"
+      - name: Check headless build and tests
+        run: opam exec -- make build test kernel-test live-test saved-test
+      - name: Check formatting
+        run: |
+          opam install -y ocamlformat.0.29.0
+          opam exec -- make fmt-check
+  graphical:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Install graphics and display dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake libglfw3-dev libglew-dev libgl1-mesa-dev libfreetype-dev xvfb xauth libgl1-mesa-dri zenity fontconfig fonts-dejavu-core
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.5.1
+      - name: Install workbench dependencies
+        run: opam exec -- make deps-gui
+      - name: Build pinned Rayforce
+        run: |
+          bash ci/build-rayforce.sh "$RUNNER_TEMP/rayforce"
+          echo "$RUNNER_TEMP/rayforce" >> "$GITHUB_PATH"
+      - name: Test native GUI with software OpenGL
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: opam exec -- make build build-gui test gui-test

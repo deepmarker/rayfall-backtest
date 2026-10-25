@@ -1,0 +1,579 @@
+;; Rayfall backtester — accounting kernel.
+;;
+;; Within a step the phases work on whole per-instrument vectors; the only loop
+;; is over time (and the REJECT buy chain, which is sequential by nature).
+;; ref/bt_ref.rfl is the scalar reference kernel it must match record for
+;; record (test/equivalence.rfl).
+;;
+;; Contracts: doc/contracts.md. Spot, market orders, one
+;; venue, one accounting currency, target positions on a fixed bar grid.
+;; All money, prices and quantities are fixed-point I64 (cash units, ticks,
+;; lots). A run's whole state (configuration, inputs, positions, records) lives
+;; in the global dictionary bt, under one level of keys (bt.cash, bt.qty,
+;; bt.fills, ...): one run per process.
+;;
+;; Entry points:
+;;   (bt_run cfg instruments bars targets)           targets given as data
+;;   (bt_run_strategy cfg instruments bars strategy) targets from a strategy
+;;
+;;   cfg          {cash0 fee_ppm start period steps max_weight_ppm max_gross_ppm buy_policy};
+;;                period is a TIMESPAN, end = start + steps*period; buy_policy REJECT or SCALE
+;;   instruments  [sym mult min_qty min_notional ...]
+;;   bars         [ts sym o c ...]  ts = bar open, on the grid, < end
+;;   targets      [ts sym target]   ts = decision time, on the grid, < end
+;;   strategy     a descriptor (bt_strategy name params run prepare):
+;;                run      (fn [ctx] table [sym target]), called at every
+;;                         decision time; see bt_strategy_targets for ctx,
+;;                         which carries params. An absent sym means hold.
+;;                prepare  0Nl, or (fn [bars params] table [ts sym f1 ...]):
+;;                         features mode, see bt_load_features.
+;;                name     a symbol for reports; params a dictionary.
+
+;; ceil(a / b) for a >= 0, b > 0.
+(set bt_ceil_div (fn [a b] (div (+ a (- b 1)) b)))
+
+;; ceil(notional * ppm / 1e6), split so no intermediate exceeds notional or 1e6*ppm.
+(set bt_fee (fn [notional]
+  (+ (* (div notional 1000000) bt.fee_ppm)
+     (bt_ceil_div (* (% notional 1000000) bt.fee_ppm) 1000000))))
+
+;; floor(basis * s / h); a full close removes all basis.
+(set bt_basis_removed (fn [basis s h]
+  (if (== s h) basis
+      (+ (* (div basis h) s) (div (* (% basis h) s) h)))))
+
+;; ---------------------------------------------------------------- records
+
+(set bt_reset_records (fn []
+  (set bt.orders (table [order_id ts sym side qty target pos_before]
+                        (list (as 'I64 []) (as 'TIMESTAMP []) (as 'SYM []) (as 'SYM []) (as 'I64 []) (as 'I64 []) (as 'I64 []))))
+  (set bt.order_events (table [seq ts order_id event reason]
+                              (list (as 'I64 []) (as 'TIMESTAMP []) (as 'I64 []) (as 'SYM []) (as 'SYM []))))
+  (set bt.fills (table [order_id ts sym side qty price notional fee basis_removed realized]
+                       (list (as 'I64 []) (as 'TIMESTAMP []) (as 'SYM []) (as 'SYM []) (as 'I64 []) (as 'I64 [])
+                             (as 'I64 []) (as 'I64 []) (as 'I64 []) (as 'I64 []))))
+  (set bt.ledger (table [seq ts order_id sym kind cash_delta qty_delta]
+                        (list (as 'I64 []) (as 'TIMESTAMP []) (as 'I64 []) (as 'SYM []) (as 'SYM []) (as 'I64 []) (as 'I64 []))))
+  (set bt.targets (table [ts sym requested target limit]
+                         (list (as 'TIMESTAMP []) (as 'SYM []) (as 'I64 []) (as 'I64 []) (as 'SYM []))))
+  (set bt.positions (table [ts sym qty basis mark mark_ts mv unrealized]
+                           (list (as 'TIMESTAMP []) (as 'SYM []) (as 'I64 []) (as 'I64 []) (as 'I64 []) (as 'TIMESTAMP [])
+                                 (as 'I64 []) (as 'I64 []))))
+  (set bt.equity (table [ts cash mv equity realized fees unrealized]
+                        (list (as 'TIMESTAMP []) (as 'I64 []) (as 'I64 []) (as 'I64 []) (as 'I64 []) (as 'I64 []) (as 'I64 []))))))
+
+(set bt_event (fn [ts oid ev reason]
+  (insert 'bt.order_events (list bt.seq ts oid ev reason))
+  (set bt.seq (+ bt.seq 1))))
+
+(set bt_post (fn [ts oid sym kind cash_delta qty_delta]
+  (insert 'bt.ledger (list bt.seq ts oid sym kind cash_delta qty_delta))
+  (set bt.seq (+ bt.seq 1))))
+
+;; ---------------------------------------------------------------- loading
+
+(set bt_fail (fn [msg] (raise (format "bt: invalid input: %" msg))))
+
+;; Flat grid index k*n + i of each row; raises on off-grid, out-of-range,
+;; unknown-symbol or duplicate keys. Rows must satisfy ts < end.
+(set bt_grid_index (fn [what ts sym]
+  (let off (- ts bt.start))
+  ;; div keeps the duration tag even for span/span; indices must be I64.
+  (let k (as 'I64 (div off bt.period)))
+  (if (any (!= off (* k bt.period))) (bt_fail (format "% off the grid" what)))
+  (if (any (or (< k 0) (>= k bt.steps))) (bt_fail (format "% outside [start, end)" what)))
+  (let i (find bt.syms sym))
+  (if (any (nil? i)) (bt_fail (format "% has unknown symbols" what)))
+  (let flat (+ (* k bt.n) i))
+  (if (!= (count (distinct flat)) (count flat)) (bt_fail (format "% has duplicate (ts, sym)" what)))
+  flat))
+
+;; Scatter a column onto the K*n grid; missing cells are null.
+(set bt_grid (fn [flat col] (at col (find flat (til (* bt.steps bt.n))))))
+
+(set bt_load (fn [cfg instruments bars targets]
+  (set bt.cash0 (at cfg 'cash0))
+  (set bt.fee_ppm (at cfg 'fee_ppm))
+  (set bt.start (at cfg 'start))
+  (set bt.period (at cfg 'period))
+  (if (!= (type bt.period) 'timespan) (bt_fail "period must be a positive TIMESPAN"))
+  (if (or (nil? bt.period) (<= bt.period 0D)) (bt_fail "period must be a positive TIMESPAN"))
+  (set bt.steps (at cfg 'steps))
+  (set bt.max_weight_ppm (at cfg 'max_weight_ppm))
+  (set bt.max_gross_ppm (at cfg 'max_gross_ppm))
+  (set bt.buy_policy (at cfg 'buy_policy))
+  (if (or (!= (type bt.max_weight_ppm) 'i64) (!= (type bt.max_gross_ppm) 'i64)
+          (< bt.max_weight_ppm 0) (< bt.max_gross_ppm 0))
+      (bt_fail "max_weight_ppm and max_gross_ppm must be non-negative integers"))
+  (if (not (in bt.buy_policy [REJECT SCALE])) (bt_fail "buy_policy must be REJECT or SCALE"))
+  (let ins (xasc instruments 'sym))
+  (set bt.syms (at ins 'sym))
+  (set bt.n (count bt.syms))
+  (if (!= (count (distinct bt.syms)) bt.n) (bt_fail "duplicate instruments"))
+  (set bt.mult (at ins 'mult))
+  (set bt.min_qty (at ins 'min_qty))
+  (set bt.min_notional (at ins 'min_notional))
+  (if (any (<= bt.mult 0)) (bt_fail "mult must be positive"))
+  (if (any (nil? (concat bt.min_qty bt.min_notional))) (bt_fail "null instrument limit"))
+  (if (any (< (concat bt.min_qty bt.min_notional) 0)) (bt_fail "negative instrument limit"))
+  (if (any (nil? (concat (at bars 'o) (at bars 'c)))) (bt_fail "null bar price"))
+  (if (any (<= (concat (at bars 'o) (at bars 'c)) 0)) (bt_fail "non-positive bar price"))
+  (if (any (nil? (at targets 'target))) (bt_fail "null target"))
+  (let bflat (bt_grid_index "bars" (at bars 'ts) (at bars 'sym)))
+  (set bt.open (bt_grid bflat (at bars 'o)))
+  (set bt.close (bt_grid bflat (at bars 'c)))
+  ;; Strategies see the bars in (ts, sym) order, whatever the input order.
+  (set bt.bars (xasc bars [ts sym]))
+  (let tflat (bt_grid_index "targets" (at targets 'ts) (at targets 'sym)))
+  (set bt.target (bt_grid tflat (at targets 'target)))))
+
+;; ---------------------------------------------------------------- state
+
+(set bt_reset_state (fn []
+  (set bt.cash bt.cash0)
+  (set bt.realized 0)
+  (set bt.fees 0)
+  (set bt.seq 0)
+  (set bt.next_oid 0)
+  (set bt.qty (take 0 bt.n))
+  (set bt.basis (take 0 bt.n))
+  (set bt.mark (take 0Nl bt.n))
+  (set bt.mark_ts (take 0Np bt.n))
+  ;; per-order attributes, indexed by order_id
+  (set bt.o_i (as 'I64 []))
+  (set bt.o_qty (as 'I64 []))))
+
+;; ---------------------------------------------------------------- phases
+
+;; m ? a : b elementwise, for an I64 mask m of 0/1 and non-null a, b.
+(set bt_vsel (fn [m a b] (+ (* m a) (* (- 1 m) b))))
+
+(set bt_phase_mark (fn [k T]
+  (if (> k 0)
+      (do
+        (let c (at bt.close (+ (* (- k 1) bt.n) (til bt.n))))
+        (alter 'bt.mark_ts set (where (not (nil? c))) T)
+        (set bt.mark (fill bt.mark c))))))
+
+(set bt_phase_snapshot (fn [T]
+  (let mv (fill 0 (* (* bt.qty bt.mark) bt.mult)))
+  (insert 'bt.positions (list (take T bt.n) bt.syms bt.qty bt.basis bt.mark bt.mark_ts mv (- mv bt.basis)))
+  (let total (sum mv))
+  (insert 'bt.equity
+          (list T bt.cash total (+ bt.cash total) bt.realized bt.fees (- total (sum bt.basis))))))
+
+;; Events at T, by order: a SUBMITTED event, then a REJECTED one for each order
+;; with a non-empty reason. Sequence numbers follow order_id, as if emitted one
+;; order at a time; the run sorts the events by seq at the end.
+(set bt_submit_events (fn [T oid reason]
+  (let m (count oid))
+  (let rej (as 'I64 (not (nil? reason))))
+  (let cnt (+ 1 rej))
+  (let s0 (- (+ bt.seq (sums cnt)) cnt))
+  (set bt.seq (+ bt.seq (sum cnt)))
+  (insert 'bt.order_events (list s0 (take T m) oid (take 'SUBMITTED m) (take ' m)))
+  (let r (where (> rej 0)))
+  (insert 'bt.order_events
+          (list (+ 1 (at s0 r)) (take T (count r)) (at oid r) (take 'REJECTED (count r)) (at reason r)))))
+
+;; Submit the orders that move instruments ix to their applied targets bt.e.
+;; Accepted orders join the pending sell/buy queues for the fill phase.
+(set bt_submit (fn [T ix]
+  (let oi (at ix (where (!= (at bt.e ix) (at bt.qty ix)))))
+  (let m (count oi))
+  (if (> m 0)
+      (do
+        (let tg (at bt.e oi))
+        (let pos (at bt.qty oi))
+        (let delta (- tg pos))
+        (let oid (+ bt.next_oid (til m)))
+        (set bt.next_oid (+ bt.next_oid m))
+        (let sell (as 'I64 (< delta 0)))
+        (let q (abs delta))
+        (insert 'bt.orders (list oid (take T m) (at bt.syms oi) (at [BUY SELL] sell) q tg pos))
+        (alter 'bt.o_i concat oi)
+        (alter 'bt.o_qty concat q)
+        (let mark (at bt.mark oi))
+        (let code (bt_vsel (as 'I64 (< tg 0)) 1
+                           (bt_vsel (as 'I64 (< q (at bt.min_qty oi))) 2
+                                    (bt_vsel (as 'I64 (nil? mark)) 3
+                                             (bt_vsel (as 'I64 (< (fill 0 (* (* q mark) (at bt.mult oi)))
+                                                                  (at bt.min_notional oi)))
+                                                      4 0)))))
+        (bt_submit_events T oid (at bt_reject_reasons code))
+        (let ok (== code 0))
+        (set bt.pend_sell (at oid (where (and ok (> sell 0)))))
+        (set bt.pend_buy (at oid (where (and ok (== sell 0)))))))))
+
+(set bt_reject_reasons [' SHORT_NOT_ALLOWED BELOW_MIN_QTY NO_MARK BELOW_MIN_NOTIONAL])
+
+;; The bars whose close is available at T: ts + period <= T.
+(set bt_view (fn [T]
+  (let cutoff (- T bt.period))
+  (select {from: bt.bars where: (<= ts cutoff)})))
+
+;; Features mode: (prepare bars params) runs once, on all the bars in (ts, sym)
+;; order, and returns a table [ts sym f1 f2 ...] with at most one row per bar
+;; key. Each feature is scattered onto the grid; the decision at step k reads,
+;; for every instrument, the row of its bar that closed at T (grid step k - 1),
+;; null where there is none. A feature row of bar ts must depend only on bars
+;; up to ts; the causality tests check it, as for the view.
+(set bt_load_features (fn []
+  (let f (bt.prepare bt.bars bt.params))
+  (if (!= (type f) 'TABLE) (raise "bt: prepare must return a table [ts sym ...]"))
+  (let flat (bt_grid_index "features" (at f 'ts) (at f 'sym)))
+  (let cells (find flat (til (* bt.steps bt.n))))
+  (set bt.feat_names (except (key f) [ts sym]))
+  (set bt.feat_grids (map (fn [c] (at (at f c) cells)) bt.feat_names))))
+
+(set bt_feat_row (fn [k]
+  (let ix (if (== k 0) (take (* bt.steps bt.n) bt.n) (+ (* (- k 1) bt.n) (til bt.n))))
+  (dict bt.feat_names (map (fn [g] (at g ix)) bt.feat_grids))))
+
+;; Targets at T from the strategy, one per instrument (null = hold). The
+;; strategy sees only bars whose close is available at T: ts + period <= T.
+;; ctx: {k T start period params view equity cash syms qty mark mark_ts mult
+;; max_weight_ppm max_gross_ppm}, where params are the strategy's own, and
+;; qty, mark, mark_ts and mult are
+;; per-instrument vectors in syms order and equity is the pre-trade snapshot
+;; at T. In features mode, feat (a dict of feature vectors in syms order)
+;; replaces view.
+(set bt_strategy_targets (fn [k T]
+  (let ctx (if bt.use_features
+               (dict [k T start period params feat equity cash syms qty mark mark_ts mult
+                      max_weight_ppm max_gross_ppm]
+                     (list k T bt.start bt.period bt.params (bt_feat_row k) (last (at bt.equity 'equity)) bt.cash
+                           bt.syms bt.qty bt.mark bt.mark_ts bt.mult bt.max_weight_ppm bt.max_gross_ppm))
+               (dict [k T start period params view equity cash syms qty mark mark_ts mult
+                      max_weight_ppm max_gross_ppm]
+                     (list k T bt.start bt.period bt.params (bt_view T) (last (at bt.equity 'equity)) bt.cash
+                           bt.syms bt.qty bt.mark bt.mark_ts bt.mult bt.max_weight_ppm bt.max_gross_ppm))))
+  (let r (bt.run ctx))
+  (if (!= (type r) 'TABLE) (raise "bt: strategy must return a table [sym target]"))
+  (let rs (at r 'sym))
+  (let rt (at r 'target))
+  (if (!= (type rt) 'I64) (raise "bt: strategy target column must be I64 lots"))
+  (if (any (nil? rt)) (raise "bt: strategy returned a null target"))
+  (if (any (nil? (find bt.syms rs))) (raise "bt: strategy returned an unknown symbol"))
+  (if (!= (count (distinct rs)) (count rs)) (raise "bt: strategy returned a symbol twice"))
+  (at rt (find rs bt.syms))))
+
+;; ---------------------------------------------------------------- limits
+
+;; floor(x * ppm / 1e6) for x >= 0, split so no intermediate exceeds x or 1e6*ppm.
+(set bt_ppm_of (fn [x ppm]
+  (+ (* (div x 1000000) ppm) (div (* (% x 1000000) ppm) 1000000))))
+
+;; Values of the targets e (lots per instrument) at the marks, in cash units. A
+;; target with no mark, or not above zero, counts as 0: submission rejects it
+;; or it is flat.
+(set bt_values (fn [e] (* (fill 0 (* (* e bt.mark) bt.mult)) (as 'I64 (> e 0)))))
+
+;; bt.e <- floor(e0 * f) for every requested target with a value, marking each
+;; one that changes with MAX_GROSS.
+(set bt_scale_targets (fn [asked e0 f]
+  (let m (* asked (as 'I64 (> (bt_values e0) 0))))
+  (let e2 (as 'I64 (floor (* (as 'F64 e0) f))))
+  (set bt.e (bt_vsel m e2 e0))
+  (alter 'bt.why set (where (and (> m 0) (< e2 e0))) 'MAX_GROSS)))
+
+;; Apply the position limits to the requested targets req (lots per instrument,
+;; null = hold), leaving the result in bt.e and the limit that last changed
+;; each target in bt.why. Values are taken at the decision-time mark against
+;; pre-trade equity. Each requested target is capped at max_weight of equity.
+;; Then, if the requested targets together exceed the room that max_gross of
+;; equity leaves beside the held positions, they are scaled by one factor,
+;; rounding down to lots. The factor is a float; the exact integer total is
+;; checked and the factor shrunk until it fits. Limits never touch a held
+;; position: one that drifts past a limit is left until the next request.
+(set bt_constrain (fn [req]
+  (let asked (as 'I64 (not (nil? req))))
+  (let e (fill 0 req))
+  (let equity (last (at bt.equity 'equity)))
+  (let wcap (bt_ppm_of equity bt.max_weight_ppm))
+  (let over (* asked (as 'I64 (> (bt_values e) wcap))))
+  (set bt.e (bt_vsel over (fill 0 (div wcap (* bt.mark bt.mult))) e))
+  (set bt.why (take ' bt.n))
+  (alter 'bt.why set (where (> over 0)) 'MAX_WEIGHT)
+  (let held_value (sum (* (- 1 asked) (bt_values bt.qty))))
+  (let room (- (bt_ppm_of equity bt.max_gross_ppm) held_value))
+  (let room (if (< room 0) 0 room))
+  (let total (sum (* asked (bt_values bt.e))))
+  (if (> total room)
+      (do
+        (let e0 bt.e)
+        (let f (/ (as 'F64 room) (as 'F64 total)))
+        (bt_scale_targets asked e0 f)
+        (while (> (sum (* asked (bt_values bt.e))) room)
+          (let f (* f 0.999999999))
+          (bt_scale_targets asked e0 f))))))
+
+;; ---------------------------------------------------------------- decide
+
+;; Requested targets at T (null = hold), from the strategy or the target rows,
+;; go through the position limits; each one gets a targets row and, if it
+;; differs from the position, an order.
+(set bt_phase_decide (fn [k T]
+  (set bt.pend_sell (as 'I64 []))
+  (set bt.pend_buy (as 'I64 []))
+  (let req (if bt.use_strategy (bt_strategy_targets k T)
+               (at bt.target (+ (* k bt.n) (til bt.n)))))
+  (bt_constrain req)
+  (let ix (where (not (nil? req))))
+  (if (> (count ix) 0)
+      (do
+        (insert 'bt.targets (list (take T (count ix)) (at bt.syms ix) (at req ix) (at bt.e ix) (at bt.why ix)))
+        (bt_submit T ix)))))
+
+;; ---------------------------------------------------------------- fills
+;; The scalar fill functions below are the sequential path: the REJECT buy
+;; chain when the buys do not all fit, and its SCALE counterpart. The vector
+;; paths after them emit exactly the same records.
+
+(set bt_fill_sell (fn [T oid i qty px why]
+  (let sym (at bt.syms i))
+  (let held (at bt.qty i))
+  (if (> qty held) (bt_event T oid 'REJECTED 'INSUFFICIENT_POSITION)
+      (do
+        (let notional (* (* qty px) (at bt.mult i)))
+        (let fee (bt_fee notional))
+        (let removed (bt_basis_removed (at bt.basis i) qty held))
+        (let realized (- notional removed))
+        (set bt.cash (- (+ bt.cash notional) fee))
+        (set bt.realized (+ bt.realized realized))
+        (set bt.fees (+ bt.fees fee))
+        (alter 'bt.qty set i (- held qty))
+        (alter 'bt.basis set i (- (at bt.basis i) removed))
+        (insert 'bt.fills (list oid T sym 'SELL qty px notional fee removed realized))
+        (bt_post T oid sym 'TRADE notional (neg qty))
+        (bt_post T oid sym 'FEE (neg fee) 0)
+        (bt_event T oid 'FILLED why)))))
+
+(set bt_fill_buy (fn [T oid i qty px why]
+  (let sym (at bt.syms i))
+  (let notional (* (* qty px) (at bt.mult i)))
+  (let fee (bt_fee notional))
+  (if (> (+ notional fee) bt.cash) (bt_event T oid 'REJECTED 'INSUFFICIENT_CASH)
+      (do
+        (set bt.cash (- bt.cash (+ notional fee)))
+        (set bt.fees (+ bt.fees fee))
+        (alter 'bt.qty set i (+ (at bt.qty i) qty))
+        (alter 'bt.basis set i (+ (at bt.basis i) notional))
+        (insert 'bt.fills (list oid T sym 'BUY qty px notional fee 0 0))
+        (bt_post T oid sym 'TRADE (neg notional) qty)
+        (bt_post T oid sym 'FEE (neg fee) 0)
+        (bt_event T oid 'FILLED why)))))
+
+;; Execute the queue `oids` at the open of bar [T, T+period).
+(set bt_fill_queue (fn [k T oids fill]
+  (times [j (count oids)]
+    (let oid (at oids j))
+    (let i (at bt.o_i oid))
+    (let px (at bt.open (+ (* k bt.n) i)))
+    (if (nil? px) (bt_event T oid 'REJECTED 'NO_PRICE)
+        (fill T oid i (at bt.o_qty oid) px ')))))
+
+(set bt_order_px (fn [k oid] (at bt.open (+ (* k bt.n) (at bt.o_i oid)))))
+
+;; The buys under buy_policy SCALE. If the buys priced at the open cost more,
+;; fees included, than the cash left after the sells, each one is cut to the
+;; same fraction f of its quantity, rounding down to lots, and is FILLED with
+;; reason SCALED; the rest of the order lapses. f keeps back one cash unit per
+;; buy for fee rounding, so the cut buys fit; the cash check in bt_fill_buy
+;; still guards. Limits are checked on the cut quantity at the fill price.
+(set bt_fill_buys_scaled (fn [k T oids]
+  (let total 0)
+  (let priced 0)
+  (times [j (count oids)]
+    (let oid (at oids j))
+    (let px (bt_order_px k oid))
+    (if (not (nil? px))
+        (do
+          (let notional (* (* (at bt.o_qty oid) px) (at bt.mult (at bt.o_i oid))))
+          (let total (+ total (+ notional (bt_fee notional))))
+          (let priced (+ priced 1)))))
+  (let room (- bt.cash priced))
+  (let f (if (<= total bt.cash) 1.0
+             (<= room 0) 0.0
+             (/ (as 'F64 room) (as 'F64 total))))
+  (times [j (count oids)]
+    (let oid (at oids j))
+    (let i (at bt.o_i oid))
+    (let px (bt_order_px k oid))
+    (let q (at bt.o_qty oid))
+    (let q2 (if (== f 1.0) q (as 'I64 (floor (* (as 'F64 q) f)))))
+    (if (nil? px) (bt_event T oid 'REJECTED 'NO_PRICE)
+        (== q2 0) (bt_event T oid 'REJECTED 'INSUFFICIENT_CASH)
+        (< q2 (at bt.min_qty i)) (bt_event T oid 'REJECTED 'BELOW_MIN_QTY)
+        (< (* (* q2 px) (at bt.mult i)) (at bt.min_notional i))
+        (bt_event T oid 'REJECTED 'BELOW_MIN_NOTIONAL)
+        (bt_fill_buy T oid i q2 px (if (< q2 q) 'SCALED '))))))
+
+;; Sells at T, all at once: none depends on cash. Each order is rejected (one
+;; seq) or filled (fill, TRADE and FEE ledger rows, FILLED event: three seqs).
+(set bt_fill_sells (fn [k T oids]
+  (let i (at bt.o_i oids))
+  (let q (at bt.o_qty oids))
+  (let px (at bt.open (+ (* k bt.n) i)))
+  (let held (at bt.qty i))
+  (let nopx (nil? px))
+  (let ok (and (not nopx) (<= q held)))
+  (let cnt (+ 1 (* 2 (as 'I64 ok))))
+  (let s0 (- (+ bt.seq (sums cnt)) cnt))
+  (set bt.seq (+ bt.seq (sum cnt)))
+  (let r (where (not ok)))
+  (insert 'bt.order_events
+          (list (at s0 r) (take T (count r)) (at oids r) (take 'REJECTED (count r))
+                (at [INSUFFICIENT_POSITION NO_PRICE] (as 'I64 (at nopx r)))))
+  (let f (where ok))
+  (let m (count f))
+  (if (> m 0)
+      (do
+        (let fi (at i f))
+        (let fq (at q f))
+        (let fpx (at px f))
+        (let fh (at held f))
+        (let basis (at bt.basis fi))
+        (let notional (* (* fq fpx) (at bt.mult fi)))
+        (let fee (bt_fee notional))
+        (let removed (bt_vsel (as 'I64 (== fq fh)) basis
+                              (+ (* (div basis fh) fq) (div (* (% basis fh) fq) fh))))
+        (let realized (- notional removed))
+        (let syms (at bt.syms fi))
+        (let fo (at oids f))
+        (let fs (at s0 f))
+        (let tm (take T m))
+        (set bt.cash (- (+ bt.cash (sum notional)) (sum fee)))
+        (set bt.realized (+ bt.realized (sum realized)))
+        (set bt.fees (+ bt.fees (sum fee)))
+        (alter 'bt.qty set fi (- fh fq))
+        (alter 'bt.basis set fi (- basis removed))
+        (insert 'bt.fills (list fo tm syms (take 'SELL m) fq fpx notional fee removed realized))
+        (insert 'bt.ledger (list fs tm fo syms (take 'TRADE m) notional (neg fq)))
+        (insert 'bt.ledger (list (+ fs 1) tm fo syms (take 'FEE m) (neg fee) (take 0 m)))
+        (insert 'bt.order_events (list (+ fs 2) tm fo (take 'FILLED m) (take ' m)))))))
+
+;; Buys at T, given the quantity q2 each one fills and the reason it is
+;; rejected (null if none), when the filled ones fit in the cash in order_id
+;; order. Returns false, emitting nothing, when they do not: the caller then
+;; takes the sequential path.
+(set bt_fill_buys_vec (fn [k T oids q2 reason]
+  (let i (at bt.o_i oids))
+  (let px (fill 0 (at bt.open (+ (* k bt.n) i))))
+  (let ok (nil? reason))
+  (let notional (* (* (* q2 px) (at bt.mult i)) (as 'I64 ok)))
+  (let fee (bt_fee notional))
+  (if (any (> (sums (+ notional fee)) bt.cash)) false
+      (do
+        (let cnt (+ 1 (* 2 (as 'I64 ok))))
+        (let s0 (- (+ bt.seq (sums cnt)) cnt))
+        (set bt.seq (+ bt.seq (sum cnt)))
+        (let r (where (not ok)))
+        (insert 'bt.order_events
+                (list (at s0 r) (take T (count r)) (at oids r) (take 'REJECTED (count r)) (at reason r)))
+        (let f (where ok))
+        (let m (count f))
+        (if (> m 0)
+            (do
+              (let fi (at i f))
+              (let fq (at q2 f))
+              (let fn_ (at notional f))
+              (let ff (at fee f))
+              (let fo (at oids f))
+              (let fs (at s0 f))
+              (let syms (at bt.syms fi))
+              (let tm (take T m))
+              (let scaled (as 'I64 (< fq (at bt.o_qty fo))))
+              (set bt.cash (- bt.cash (sum (+ fn_ ff))))
+              (set bt.fees (+ bt.fees (sum ff)))
+              (alter 'bt.qty set fi (+ (at bt.qty fi) fq))
+              (alter 'bt.basis set fi (+ (at bt.basis fi) fn_))
+              (insert 'bt.fills (list fo tm syms (take 'BUY m) fq (at px f) fn_ ff (take 0 m) (take 0 m)))
+              (insert 'bt.ledger (list fs tm fo syms (take 'TRADE m) (neg fn_) fq))
+              (insert 'bt.ledger (list (+ fs 1) tm fo syms (take 'FEE m) (neg ff) (take 0 m)))
+              (insert 'bt.order_events
+                      (list (+ fs 2) tm fo (take 'FILLED m) (at [' SCALED] scaled)))))
+        true))))
+
+;; The quantities and rejection reasons of the buys under each policy, as the
+;; scalar paths compute them.
+(set bt_buys (fn [k T oids]
+  (let i (at bt.o_i oids))
+  (let q (at bt.o_qty oids))
+  (let px (at bt.open (+ (* k bt.n) i)))
+  (let nopx (as 'I64 (nil? px)))
+  (if (== bt.buy_policy 'REJECT)
+      (bt_fill_buys_vec k T oids q (at [' NO_PRICE] nopx))
+      (do
+        (let notional (fill 0 (* (* q px) (at bt.mult i))))
+        (let total (sum (* (- 1 nopx) (+ notional (bt_fee notional)))))
+        (let priced (- (count oids) (sum nopx)))
+        (let room (- bt.cash priced))
+        (let f (if (<= total bt.cash) 1.0
+                   (<= room 0) 0.0
+                   (/ (as 'F64 room) (as 'F64 total))))
+        (let q2 (if (== f 1.0) q (as 'I64 (floor (* (as 'F64 q) f)))))
+        (let code (bt_vsel nopx 1
+                           (bt_vsel (as 'I64 (== q2 0)) 2
+                                    (bt_vsel (as 'I64 (< q2 (at bt.min_qty i))) 3
+                                             (bt_vsel (as 'I64 (< (fill 0 (* (* q2 px) (at bt.mult i)))
+                                                                  (at bt.min_notional i)))
+                                                      4 0)))))
+        (bt_fill_buys_vec k T oids q2
+                          (at [' NO_PRICE INSUFFICIENT_CASH BELOW_MIN_QTY BELOW_MIN_NOTIONAL]
+                              code))))))
+
+(set bt_phase_fill (fn [k T]
+  (if (> (count bt.pend_sell) 0) (bt_fill_sells k T bt.pend_sell))
+  (if (and (> (count bt.pend_buy) 0) (not (bt_buys k T bt.pend_buy)))
+      (if (== bt.buy_policy 'SCALE) (bt_fill_buys_scaled k T bt.pend_buy)
+          (bt_fill_queue k T bt.pend_buy bt_fill_buy)))))
+
+;; ---------------------------------------------------------------- run
+
+(set bt_no_targets (table [ts sym target] (list (as 'TIMESTAMP []) (as 'SYM []) (as 'I64 []))))
+
+;; A strategy descriptor. params is a dictionary; prepare is 0Nl unless the
+;; strategy runs in features mode.
+(set bt_strategy (fn [name params run prepare]
+  (dict [name params run prepare] (list name params run prepare))))
+
+(set bt_check_strategy (fn [s]
+  (if (or (!= (type s) 'DICT) (not (all (in [name params run prepare] (key s)))))
+      (raise "bt: strategy must be a descriptor {name params run prepare} (bt_strategy)"))
+  (if (!= (type (at s 'params)) 'DICT) (raise "bt: strategy params must be a dictionary"))))
+
+;; Entry points. strategy is a descriptor, or 0Nl for targets given as data.
+(set bt_run_strategy (fn [cfg instruments bars strategy]
+  (bt_simulate cfg instruments bars bt_no_targets strategy)))
+
+(set bt_run (fn [cfg instruments bars targets]
+  (bt_simulate cfg instruments bars targets 0Nl)))
+
+(set bt_simulate (fn [cfg instruments bars targets strategy]
+  (set bt {})
+  (set bt.use_strategy (not (nil? strategy)))
+  (set bt.use_features false)
+  (if bt.use_strategy
+      (do
+        (bt_check_strategy strategy)
+        (set bt.strategy strategy)
+        (set bt.run (at strategy 'run))
+        (set bt.params (at strategy 'params))
+        (set bt.prepare (at strategy 'prepare))
+        (set bt.use_features (not (nil? bt.prepare)))))
+  (bt_load cfg instruments bars targets)
+  (if bt.use_features (bt_load_features))
+  (bt_reset_state)
+  (bt_reset_records)
+  (times [k (+ bt.steps 1)]
+    (let T (+ bt.start (* k bt.period)))
+    (bt_phase_mark k T)
+    (bt_phase_snapshot T)
+    (if (< k bt.steps)
+        (do (bt_phase_decide k T) (bt_phase_fill k T))))
+  ;; within a step, events and ledger rows are written by kind; put them in
+  ;; the order of their sequence numbers
+  (set bt.order_events (xasc bt.order_events 'seq))
+  (set bt.ledger (xasc bt.ledger 'seq))
+  bt.equity))

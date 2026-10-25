@@ -1,0 +1,31 @@
+;; Causality check shared by the fixtures. (causal name strategy) runs the
+;; strategy (a descriptor) on `bars` and on `perturbed`, which must differ only in bars from
+;; time D on, under `cfg` and `ins` (globals of the calling fixture). Every
+;; target, order and equity snapshot up to D, and every fill before D, must
+;; be identical; as a positive control, equity after D must differ.
+;; For a strategy in features mode it also checks that prepare reads no later
+;; bar.
+
+(set causal_by (fn [name run]
+  (run bars)
+  (let a (list (select {from: bt.targets where: (<= ts D)})
+               (select {from: bt.orders where: (<= ts D)})
+               (select {from: bt.fills where: (< ts D)})
+               (select {from: bt.equity where: (<= ts D)})))
+  (let after_a (select {from: bt.equity where: (> ts D)}))
+  (run perturbed)
+  (let b (list (select {from: bt.targets where: (<= ts D)})
+               (select {from: bt.orders where: (<= ts D)})
+               (select {from: bt.fills where: (< ts D)})
+               (select {from: bt.equity where: (<= ts D)})))
+  (let after_b (select {from: bt.equity where: (> ts D)}))
+  (check_tbl (format "% targets <= D" name) (at b 0) (at a 0))
+  (check_tbl (format "% orders <= D" name) (at b 1) (at a 1))
+  (check_tbl (format "% fills < D" name) (at b 2) (at a 2))
+  (check_tbl (format "% equity <= D" name) (at b 3) (at a 3))
+  ;; positive control: the perturbation does reach later results
+  (check (format "% perturbation is visible after D" name)
+         (all (== (at after_a 'equity) (at after_b 'equity))) false)))
+
+(set causal (fn [name strat]
+  (causal_by name (fn [bs] (bt_run_strategy cfg ins bs strat)))))

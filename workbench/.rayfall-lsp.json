@@ -1,0 +1,4 @@
+{
+  "entrypoints": ["."],
+  "workingDirectory": "../backtest"
+}

@@ -1,0 +1,2 @@
+{"mode": "xsmomf", "instruments": 100, "steps": 26304, "bars": 2630400, "fills": 705, "load_ms": 97.5567, "run_ms": 2808.47, "prepare_ms": 183.536, "strategy_ms": 29.2838, "check_ms": 1224, "metrics_ms": 0.816753}
+PASS exact projected attribution and all checks

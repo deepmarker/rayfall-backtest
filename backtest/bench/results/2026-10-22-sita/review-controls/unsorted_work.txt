@@ -1,0 +1,7 @@
+small|desc=0|valid=1|resolutions=28|ms=0.029546
+early|desc=0|valid=1|resolutions=60005|ms=5.259873
+late|desc=0|valid=1|resolutions=60007|ms=4.073186
+small|desc=1|valid=1|resolutions=28|ms=0.003747
+early|desc=1|valid=1|resolutions=60005|ms=2.812700
+late|desc=1|valid=1|resolutions=60007|ms=4.078055
+serial|desc=0|valid=1|resolutions=60005|ms=3.224773

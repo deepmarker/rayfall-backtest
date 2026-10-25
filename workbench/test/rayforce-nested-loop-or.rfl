@@ -1,0 +1,11 @@
+;; Upstream regression reference; fixed in installed Rayforce 65de9fe5.
+;; Expected: 0 through 7, then 'done. Older affected builds printed only 0.
+(set f (fn []
+  (times [k 8]
+    (println k)
+    (times [j 5]
+      (let a [1 2])
+      (if (not (all (or (nil? a) (== a a))))
+          (raise "unexpected"))))
+  'done))
+(println (f))

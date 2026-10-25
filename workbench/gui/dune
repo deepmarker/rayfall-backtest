@@ -1,0 +1,16 @@
+(executable
+ (name workbench_gui)
+ (public_name rayfall-backtest-gui)
+ (package rayfall-backtest-gui)
+ (libraries
+  core
+  core_unix.command_unix
+  async
+  backtest_viewer
+  imguiml-ft
+  imguiml-ft.imguiml_impl
+  ctypes
+  ctypes-foreign)
+ (link_flags -cclib -lglfw -cclib -lGLEW -cclib -lGL)
+ (preprocess
+  (pps ppx_jane)))

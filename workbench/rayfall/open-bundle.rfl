@@ -1,0 +1,7 @@
+;; Startup-only loader. No strategy, backtester checkout or market data needed.
+(set wb_open_args (at (.sys.args) 'user))
+(load (at wb_open_args 'service))
+(load (at wb_open_args 'bundle_module))
+(if (nil? (at wb_open_args 'staged))
+    (wb_open (at wb_open_args 'directory))
+    (wb_open_staged (at wb_open_args 'directory)))

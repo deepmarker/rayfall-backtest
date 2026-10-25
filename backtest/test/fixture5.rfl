@@ -1,0 +1,43 @@
+;; Fixture 5: the cross-sectional strategy on the twelve-instrument snapshot,
+;; with SCALE buys and a 30 % max_weight that cuts every one of its 32.7 %
+;; targets: causality, independence from input row order, and the
+;; accounting, limit and attribution checks, for the view-based and the
+;; features-mode forms.
+;; Run from backtest:  rayforce test/fixture5.rfl
+
+(load "bt.rfl")
+(load "report.rfl")
+(load "test/assert.rfl")
+(load "test/causal.rfl")
+(load "strategies/xsmom.rfl")
+
+(set D_dir "data/binance-spot12-1d-2023-10_2026-09/")
+(set ins (read-csv [SYM I64 I64 I64 STR STR] (concat D_dir "instruments.csv")))
+(set bars (read-csv [TIMESTAMP SYM I64 I64 I64 I64 I64] (concat D_dir "bars.csv")))
+(set cfg {cash0: 10000000000000 fee_ppm: 1000 start: 2023.10.01D00:00:00.000 period: 1D steps: 1096
+          max_weight_ppm: 300000 max_gross_ppm: 1000000 buy_policy: 'SCALE})
+
+;; ---- causality, on a rebalance day: (497 - 91) % 7 = 0. A ranking ignores a
+;; ---- factor shared by every instrument, so each one gets its own: the i-th
+;; ---- symbol is multiplied by i + 2 from D on.
+(set D (+ (at cfg 'start) (* 497 (at cfg 'period))))
+(set f (+ 1 (* (+ 1 (find (asc (at ins 'sym)) (at bars 'sym))) (>= (at bars 'ts) D))))
+(set perturbed (update {from: bars o: (* o f) h: (* h f) l: (* l f) c: (* c f)}))
+(causal "xsmom" strategies.xsmom_view)
+(causal "xsmom features" strategies.xsmom)
+
+;; ---- the checks a run makes; the limit binds
+(bt_run_strategy cfg ins bars strategies.xsmom_view)
+(bt_check_identities)
+(bt_check_limits)
+(bt_check_attribution (bt_attribution))
+(check "a limit binds" (> (count (select {from: bt.targets where: (not (nil? limit))})) 0) true)
+
+;; ---- input row order: reversed instruments and bars give the same records.
+(set fwd (list bt.targets bt.orders bt.order_events bt.fills bt.ledger bt.positions bt.equity))
+(bt_run_strategy cfg (reverse ins) (reverse bars) strategies.xsmom_view)
+(set back (list bt.targets bt.orders bt.order_events bt.fills bt.ledger bt.positions bt.equity))
+(times [j (count fwd)]
+  (check_tbl (format "row order %" j) (at back j) (at fwd j)))
+
+(println "PASS fixture5")

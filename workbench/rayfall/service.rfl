@@ -1,0 +1,165 @@
+;; Typed, read-only workbench API v1. Load after bt.rfl and report.rfl.
+;; Serve only a dedicated process; this replaces its sync/async hooks.
+;; No client-supplied source is parsed or evaluated.
+(set wb_run "")
+(set wb_bundle_details null)
+(set wb_metadata (dict (take [x] 0) (list)))
+(set wb_datasets (dict (take [x] 0) (list)))
+(set wb_summaries (dict (take [x] 0) (list)))
+(set wb_names [targets orders order_events fills ledger positions equity attribution])
+
+(set wb_capture (fn []
+  (bt_check_identities)
+  (bt_check_limits)
+  (let attribution (bt_attribution))
+  (bt_check_attribution attribution)
+  (dict wb_names (list bt.targets bt.orders bt.order_events bt.fills bt.ledger
+                      bt.positions bt.equity attribution))))
+
+;; Keep engine-computed metrics: no financial calculations in the OCaml client.
+;; End is one ns after the final valuation, so the half-open window includes it.
+(set wb_summary (fn [warmup]
+  (dict [start stop warmup period periods_per_year risk_free_rate metrics assumptions]
+        (list (+ bt.start (* warmup bt.period))
+              (+ (last (at bt.equity 'ts)) 0D00:00:00.000000001)
+              warmup bt.period 365.0 0.0 (bt_metrics warmup)
+              (list "365 periods/year; risk-free rate 0; engine bt_metrics")))))
+
+;; One immutable run per service; strategy names are symbol keys. Metadata keys:
+;; framework_revision snapshot_sha256 rayforce_binary_sha256 rayforce_version
+;; config_text parameter_text (strategy -> original Rayfall parameter text).
+(set wb_index (fn [t]
+  (if (in 'wb_row (cols t)) (raise "reserved wb_row column"))
+  (table (concat (cols t) [wb_row]) (concat (value t) (list (til (count t)))))))
+
+(set wb_index_dataset (fn [tables]
+  (if (!= (count (key tables)) (count wb_names)) (raise "invalid record tables"))
+  (if (not (all (== (key tables) wb_names))) (raise "invalid record tables"))
+  (dict wb_names (map wb_index (value tables)))))
+
+(set wb_publish (fn [run metadata datasets summaries]
+  (if (!= wb_run "") (raise "workbench already published"))
+  (if (or (!= (type run) 'str) (== run "")) (raise "invalid run identity"))
+  (set wb_metadata metadata)
+  (set wb_datasets (dict (key datasets) (map wb_index_dataset (value datasets))))
+  (set wb_summaries summaries)
+  (set wb_run run)
+  null))
+
+(set wb_reply (fn [q status payload]
+  (dict [version id generation status payload]
+        (list 1 (at q 'id) (at q 'generation) status payload))))
+
+(set wb_bucket (fn [values n buckets bucket]
+  (let begin_idx (div (* bucket n) buckets))
+  (let stop (div (* (+ bucket 1) n) buckets))
+  (let part (take (drop values begin_idx) (- stop begin_idx)))
+  (if (== 0 (count (where (not (nil? part)))))
+      (return (enlist begin_idx (- stop 1))))
+  (enlist begin_idx (- stop 1)
+          (+ begin_idx (first (where (== part (min part)))))
+          (+ begin_idx (first (where (== part (max part))))))))
+
+(set wb_series (fn [data q]
+  (let name (at q 'field))
+  (if (or (!= (type name) 'sym) (not (in name (cols data))))
+      (return (wb_reply q "invalid" "unknown series field")))
+  (let values (at data name))
+  (if (!= (type values) 'I64)
+      (return (wb_reply q "invalid" "series field must be integer")))
+  (let budget (at q 'max_points))
+  (let pixels (at q 'pixel_width))
+  (if (or (!= (type budget) 'i64) (!= (type pixels) 'i64))
+      (return (wb_reply q "invalid" "invalid series bounds")))
+  (if (or (< budget 1) (> budget 65536) (< pixels 1) (> pixels 16384))
+      (return (wb_reply q "invalid" "invalid series bounds")))
+  (let data (xasc data [ts wb_row]))
+  (let values (at data name))
+  (let n (count data))
+  (let buckets 0)
+  (if (> n budget)
+    (do
+      (let buckets (min pixels (max 1 (div budget 4))))
+      (let picks (raze (map (fn [b] (wb_bucket values n buckets b)) (til buckets))))
+      (let nulls (nil? values))
+      (let gaps (+ 1 (where (!= (drop nulls 1) (take nulls (- n 1))))))
+      (let keep (asc (distinct (concat picks (concat gaps (- gaps 1))))))
+      (if (> (count keep) budget)
+          (return (wb_reply q "unavailable" "budget cannot preserve extrema and null gaps")))
+      (let data (at data keep))))
+  (wb_reply q "ok" (dict [data source_points buckets]
+    (list (table [wb_row ts value] (list (at data 'wb_row) (at data 'ts) (at data name))) n buckets)))))
+
+(set wb_dispatch (fn [q]
+  (if (!= (type q) 'DICT) (raise "workbench expects a dictionary"))
+  (if (!= (at q 'version) 1) (return (wb_reply q "unsupported" (at q 'version))))
+  (if (or (!= (type (at q 'id)) 'i64) (!= (type (at q 'generation)) 'i64))
+      (return (wb_reply q "invalid" "invalid correlation IDs")))
+  (if (or (== wb_run "") (!= (at q 'run) wb_run))
+      (return (wb_reply q "unavailable" "unknown run")))
+  (let op (at q 'op))
+  (if (== op "describe")
+      (return (wb_reply q "ok" (dict [metadata strategies bundle]
+        (list wb_metadata (key wb_datasets) wb_bundle_details)))))
+  (let strategy (at q 'strategy))
+  (if (or (!= (type strategy) 'sym) (not (in strategy (key wb_datasets))))
+      (return (wb_reply q "unavailable" "unknown strategy")))
+  (if (== op "summary")
+      (if (in strategy (key wb_summaries))
+          (return (wb_reply q "ok" (at wb_summaries strategy)))
+          (return (wb_reply q "unavailable" "no structured summary"))))
+  (if (and (!= op "rows") (!= op "series"))
+      (return (wb_reply q "invalid" "unknown operation")))
+  (let name (at q 'table))
+  (if (or (!= (type name) 'sym) (not (in name wb_names)))
+      (return (wb_reply q "invalid" "unknown table")))
+  (let data (at (at wb_datasets strategy) name))
+  ;; Physical row IDs were attached once at publication, before any filtering.
+  (let mask (take true (count data)))
+  (let lo (at q 'start))
+  (let hi (at q 'stop))
+  (if (!= (nil? lo) (nil? hi)) (return (wb_reply q "invalid" "incomplete interval")))
+  (if (not (nil? lo))
+    (do
+      (if (or (!= (type lo) 'timestamp) (!= (type hi) 'timestamp) (>= lo hi))
+          (return (wb_reply q "invalid" "invalid interval")))
+      (let mask (and mask (and (>= (at data 'ts) lo) (< (at data 'ts) hi))))))
+  (let instrument (at q 'instrument))
+  (if (not (nil? instrument))
+    (do
+      (if (or (!= (type instrument) 'sym) (not (in 'sym (cols data))))
+          (return (wb_reply q "invalid" "invalid instrument filter")))
+      (let mask (and mask (== (at data 'sym) instrument)))))
+  (let order (at q 'order_id))
+  (if (not (nil? order))
+    (do
+      (if (or (!= (type order) 'i64) (not (in 'order_id (cols data))))
+          (return (wb_reply q "invalid" "invalid order filter")))
+      (let mask (and mask (== (at data 'order_id) order)))))
+  (let data (at data (where mask)))
+  (if (== op "series")
+    (do
+      (if (or (nil? lo) (and (in 'sym (cols data)) (nil? instrument)))
+          (return (wb_reply q "invalid" "series needs interval and instrument")))
+      (return (wb_series data q))))
+  (let offset (at q 'offset))
+  (let limit (at q 'limit))
+  (if (or (!= (type offset) 'i64) (!= (type limit) 'i64))
+      (return (wb_reply q "invalid" "invalid page bounds")))
+  (if (or (< offset 0) (< limit 1) (> limit 10000))
+      (return (wb_reply q "invalid" "invalid page bounds")))
+  (let names (at q 'sort))
+  (let descending (at q 'descending))
+  (if (or (!= (type names) 'SYM) (!= (type descending) 'B8)
+          (!= (count names) (count descending)) (> (count names) 64)
+          (> (count (except names (cols data))) 0))
+      (return (wb_reply q "invalid" "invalid sort keys")))
+  ;; Stable per-key sorts, least significant key first; physical ID breaks ties.
+  (times [i (count names)]
+    (let k (- (- (count names) 1) i))
+    (let data (if (at descending k) (xdesc data (at names k)) (xasc data (at names k)))))
+  (wb_reply q "ok" (dict [data total_rows]
+    (list (take (drop data (min offset (count data))) (min limit (max 0 (- (count data) offset)))) (count data))))))
+
+(set .ipc.on.sync (fn [q] (wb_dispatch q)))
+(set .ipc.on.async (fn [q] null))

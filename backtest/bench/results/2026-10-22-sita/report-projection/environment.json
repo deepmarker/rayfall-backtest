@@ -1,0 +1,16 @@
+{
+  "rayforce_package": "rayforce-git 2.10.0.r212.gd7153e72-1",
+  "rayforce_sha256": "17ba5269202c9d5623a3697de75590bbd8fe1f793560536ed6749097f4937fcf",
+  "benchmark_sha256": "b594f1f1c79f5d86a8706fc3591cb97dfae1baabcfa6b09272731cb3f1963ce2",
+  "before_report_sha256": "147cb2713cd95dd13f58da79023986a0b01bb0f2d4d46b6bfc8b5744a602e9f3",
+  "after_report_sha256": "4eebc1032aa08f89d0b4cccb437951c264e59448f85b8b8b073611c3efbee8b9",
+  "installed_report_sha256": "4c554167072b6c5fe168d043630f3b54232b8dc90a584a41c612ccc69e0a9a4b",
+  "seed": 22,
+  "warmups_per_variant": 1,
+  "measurements_per_variant": 3,
+  "data": "data/synth-1h-100",
+  "kernel": "bt.rfl",
+  "mode": "xsmomf",
+  "secondary_workers": "runtime default; unchanged between variants",
+  "measurement_driver_note": "Exact executed driver retained; its absolute /tmp prototype paths are historical provenance, not a portable runner."
+}

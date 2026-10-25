@@ -1,0 +1,27 @@
+;; Minimal assertions for backtester tests. A failure raises, so the script
+;; exits non-zero; the caller prints PASS at the end.
+
+(set t_eq (fn [got want]
+  (and (== (type got) (type want))
+       (== (count got) (count want))
+       (all (== got want)))))
+
+(set check (fn [name got want]
+  (if (not (t_eq got want))
+      (raise (format "FAIL %: got % want %" name got want)))))
+
+;; Column `c` of table `t` must equal `want`.
+(set check_col (fn [name t c want] (check (format "%.%" name c) (at t c) want)))
+
+;; Tables must have the same columns, in order, with equal values.
+(set check_tbl (fn [name got want]
+  (check (format "%: columns" name) (key got) (key want))
+  (let cs (key want))
+  (times [j (count cs)]
+    (check_col name got (at cs j) (at want (at cs j))))))
+
+;; `expr` must raise an error whose message matches the glob `pattern`.
+(set check_raises (fn [name thunk pattern]
+  (let r (try (do (thunk) 'no-error) (fn [e] e)))
+  (if (not (and (== (type r) (type "")) (like r pattern)))
+      (raise (format "FAIL %: expected error like %, got %" name pattern r)))))

@@ -1,0 +1,77 @@
+;; Cross-sectional momentum, long-only spot.
+;;
+;; Hypothesis: among large crypto assets, those with the highest return over
+;; the last weeks keep outperforming the rest over the next weeks
+;; (cross-sectional momentum; Liu, Tsyvinski and Wu, "Common Risk Factors in
+;; Cryptocurrency", Journal of Finance 2022). Holding only the leaders should
+;; beat holding the whole universe.
+;; Benchmark: equal-weight buy-and-hold of the same universe (buyhold.rfl).
+;; Expected failure: sharp reversals, when the last weeks' leaders fall first;
+;; concentration in `top` names; fees from weekly turnover.
+;; Data: daily closes only.
+;;
+;; Rule, every `every` days from the warm-up day on:
+;;   eligible_i = marked at T, with at least lookback + 1 closes
+;;   score_i    = close_i(now) / close_i(lookback days ago) - 1
+;;   hold the `top` eligible instruments with the highest positive score
+;;   (ties by symbol), each at weight 1/top; capital not allocated stays cash.
+
+(load "strategies/common.rfl")
+
+(set xsmom_score (fn [ctx s lb]
+  (let cl (st_closes ctx s))
+  (- (/ (as 'F64 (last cl)) (as 'F64 (at cl (- (- (count cl) 1) lb)))) 1.0)))
+
+(set xsmom (fn [ctx]
+  (let d (st_day ctx))
+  (let p (at ctx 'params))
+  (if (or (< d st_warmup) (!= 0 (% (- d st_warmup) (at p 'every)))) st_hold
+      (do
+        (let syms (at ctx 'syms))
+        (let lb (at p 'lookback))
+        (let top (at p 'top))
+        (let cand (at syms (where (st_eligible ctx (+ lb 1)))))
+        (let scores (as 'F64 (map (fn [s] (xsmom_score ctx s lb)) cand)))
+        (let up (where (> scores 0.0)))
+        (let ranked (st_rank (at cand up) (at scores up)))
+        (let picked (take ranked (min top (count ranked))))
+        (let w (* (/ 1.0 top) (as 'F64 (in syms picked))))
+        (st_targets syms (st_lots_all ctx w (at p 'buffer)))))))
+
+;; The same rule in features mode (a descriptor with a prepare): xsmom_prepare computes the
+;; score of every bar once, and xsmom_f only ranks. The score is taken by
+;; position within the symbol, as st_closes does, so both forms make the same
+;; decisions and produce the same records (test/equivalence.rfl).
+(set xsmom_prepare (fn [bars p]
+  (let lb (at p 'lookback))
+  (let b (xasc bars [sym ts]))
+  (let sy (at b 'sym))
+  (let j (til (count b)))
+  (let back (- j lb))
+  (let ok (as 'I64 (>= back (find sy sy))))   ; lb rows back, same symbol
+  (let cl (as 'F64 (at b 'c)))
+  (let score (- (/ cl (at cl (* back ok))) 1.0))
+  ;; null where the window is short: an out-of-range index
+  (table [ts sym score]
+         (list (at b 'ts) sy (at score (+ (* ok j) (* (- 1 ok) (count b))))))))
+
+(set xsmom_f (fn [ctx]
+  (let d (st_day ctx))
+  (let p (at ctx 'params))
+  (if (or (< d st_warmup) (!= 0 (% (- d st_warmup) (at p 'every)))) st_hold
+      (do
+        (let syms (at ctx 'syms))
+        (let top (at p 'top))
+        (let all_scores (at (at ctx 'feat) 'score))
+        (let cand (where (not (nil? all_scores))))
+        (let scores (at all_scores cand))
+        (let up (where (> scores 0.0)))
+        (let ranked (st_rank (at (at syms cand) up) (at scores up)))
+        (let picked (take ranked (min top (count ranked))))
+        (let w (* (/ 1.0 top) (as 'F64 (in syms picked))))
+        (st_targets syms (st_lots_all ctx w (at p 'buffer)))))))
+
+;; strategies.xsmom is the features form, which run.sh uses; xsmom_view is the
+;; same rule on the view, with the same parameters.
+(set strategies.xsmom (bt_strategy 'xsmom {lookback: 28 top: 3 every: 7 buffer: 0.98} xsmom_f xsmom_prepare))
+(set strategies.xsmom_view (bt_strategy 'xsmom (at strategies.xsmom 'params) xsmom 0Nl))

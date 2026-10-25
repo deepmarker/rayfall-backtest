@@ -1,0 +1,18 @@
+{
+  "base_commit": "d7153e72af7b766f17d38483a594f5976b824a57",
+  "build": "make release -j8 (both variants, same checkout and compiler settings; only join.c differs)",
+  "compiler": "clang version 23.1.3",
+  "warmups_per_variant": 1,
+  "measurements_per_variant": 3,
+  "shuffle_seed": 22,
+  "worker_setting": "runtime default (environment unset)",
+  "benchmark": "hourly 100-instrument xsmomf, current projected report.rfl",
+  "sha256": {
+    "baseline_binary": "5525dd24748e356d4c1fa52948024a6fd5117d962daf80bc22941e60ada3cd73",
+    "candidate_binary": "e79db7a43f7428c28999d7e13d37ce10a4ef2b3c887e62fdf62554d1d1c3aae3",
+    "report_source": "4c554167072b6c5fe168d043630f3b54232b8dc90a584a41c612ccc69e0a9a4b",
+    "join_source": "8cb546ba4036644f5fc8ded46a845d682e42a2c9bd39b0c83289e2ab05842a75"
+  },
+  "pr": "https://github.com/RayforceDB/rayforce/pull/943",
+  "pr_commit": "aff43d99cc36af1828491bca14437c99d10c73d4"
+}

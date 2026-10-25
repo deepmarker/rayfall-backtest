@@ -1,0 +1,17 @@
+;; Started by serve_fixture.sh in the explicitly selected backtester checkout.
+;; Test data, not a production run identity.
+(load "test/fixture1.rfl")
+(load "report.rfl")
+(set fixture_service_path (at (at (.sys.args) 'user) 'service))
+(if (nil? fixture_service_path) (raise "fixture service requires -service PATH"))
+(load fixture_service_path)
+(wb_publish "fixture1"
+  (dict [framework_revision snapshot_sha256 rayforce_binary_sha256 rayforce_version config_text parameter_text]
+    (list "fixture" "fixture" "fixture" "fixture" (format "%" cfg)
+      (dict [fixture] (list "fixture1.rfl"))))
+  (dict [fixture] (list (wb_capture)))
+  (dict [fixture] (list (wb_summary 0))))
+
+;; The service retains immutable snapshots, not live bt table bindings.
+;; The integration test still sees the captured records after this reset.
+(bt_reset_records)

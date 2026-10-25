@@ -1,0 +1,41 @@
+;; Volatility-scaled time-series trend, long-only spot.
+;;
+;; Hypothesis: crypto majors show time-series momentum; holding an instrument
+;; only while its trailing return is positive avoids part of its large
+;; drawdowns. Scaling each position to a volatility target keeps any one
+;; instrument from dominating risk.
+;; Benchmark: equal-weight buy-and-hold over the same instruments and period
+;; (buyhold.rfl). Expected failure: choppy, range-bound markets, where
+;; signal flips trade into losses and pay fees for nothing.
+;; Data: daily closes only.
+;;
+;; Rule, every `every` days from the warm-up day on:
+;;   signal_i = 1 if close_i(now) > close_i(lookback days ago), else 0
+;;   vol_i    = stddev of the last `vol_window` daily log returns * sqrt(365)
+;;   w_i      = signal_i * min(1, vol_target / vol_i) / n
+;; Weights sum to at most 1: no leverage, no shorting.
+
+(load "strategies/common.rfl")
+
+(set trend (fn [ctx]
+  (let d (st_day ctx))
+  (let p (at ctx 'params))
+  (if (or (< d st_warmup) (!= 0 (% (- d st_warmup) (at p 'every)))) st_hold
+      (do
+        (let syms (at ctx 'syms))
+        (let n (count syms))
+        (let lb (at p 'lookback))
+        (let vw (at p 'vol_window))
+        (let lots
+          (map (fn [i]
+                 (let c (st_closes ctx (at syms i)))
+                 (let up (> (last c) (at c (- (- (count c) 1) lb))))
+                 (let rets (log (drop (ratios (take c (neg (+ vw 1)))) 1)))
+                 (let vol (* (stddev rets) (sqrt 365.0)))
+                 (let w (if up (/ (min 1.0 (/ (at p 'vol_target) vol)) n) 0.0))
+                 (st_lots ctx i w (at p 'buffer)))
+               (til n)))
+        (st_targets syms lots)))))
+
+(set strategies.trend
+  (bt_strategy 'trend {lookback: 90 vol_window: 30 vol_target: 0.5 every: 7 buffer: 0.98} trend 0Nl))

@@ -1,0 +1,6 @@
+(library
+ (name backtest_shared)
+ (public_name rayfall-backtest.shared)
+ (libraries core)
+ (modules model protocol providers)
+ (modules_without_implementation providers))

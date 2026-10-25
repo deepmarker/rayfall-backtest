@@ -1,0 +1,63 @@
+;; Fixture 2: submission-time rejections, loud input validation, and
+;; independence from input row order. Contracts: doc/contracts.md.
+;; Run from backtest:  rayforce test/fixture2.rfl
+
+(load "bt.rfl")
+(load "test/assert.rfl")
+
+(set T0 2026.01.01D00:00:00.000)
+(set T1 2026.01.01D01:00:00.000)
+(set T2 2026.01.01D02:00:00.000)
+(set H 0D01:00:00)
+(set cfg {cash0: 1000 fee_ppm: 0 start: 2026.01.01D00:00:00.000 period: 0D01:00:00 steps: 3
+          max_weight_ppm: 1000000000 max_gross_ppm: 1000000000 buy_policy: 'REJECT})
+
+(set ins (table [sym mult min_qty min_notional] (list [X] [1] [10] [0])))
+(set bars (table [ts sym o c] (list (enlist T0 T1 T2) [X X X] [10 10 10] [10 10 10])))
+
+;; ---- submission-time rejections; a target equal to the position emits nothing
+(set tg (table [ts sym target] (list (enlist T0 T1 T2) [X X X] [0 5 -3])))
+(bt_run cfg ins bars tg)
+(check_col "orders" bt.orders 'order_id [0 1])
+(check_col "orders" bt.orders 'side [BUY SELL])
+(check_col "orders" bt.orders 'qty [5 3])
+(check_col "events" bt.order_events 'event [SUBMITTED REJECTED SUBMITTED REJECTED])
+(check "reasons" (at (select {from: bt.order_events where: (== event 'REJECTED)}) 'reason)
+       [BELOW_MIN_QTY SHORT_NOT_ALLOWED])
+(check "no fills" (count bt.fills) 0)
+(check_col "equity" bt.equity 'equity [1000 1000 1000 1000])
+
+;; ---- invalid input raises; nothing is repaired
+(set run_with (fn [b t] (fn [] (bt_run cfg ins b t))))
+(set no_tg (table [ts sym target] (list (as 'TIMESTAMP []) (as 'SYM []) (as 'I64 []))))
+(set bar1 (fn [ts sym o c] (table [ts sym o c] (list (enlist ts) (enlist sym) (enlist o) (enlist c)))))
+(set tg1 (fn [ts sym x] (table [ts sym target] (list (enlist ts) (enlist sym) (enlist x)))))
+
+(check_raises "off-grid bar" (run_with (bar1 (+ T0 0D00:00:00.000000001) 'X 10 10) no_tg) "bt: invalid input: bars off the grid")
+(check_raises "bar at end" (run_with (bar1 (+ T0 (* 3 H)) 'X 10 10) no_tg) "bt: invalid input: bars outside*")
+(check_raises "bar before start" (run_with (bar1 (- T0 H) 'X 10 10) no_tg) "bt: invalid input: bars outside*")
+(check_raises "unknown symbol" (run_with (bar1 T0 'Y 10 10) no_tg) "bt: invalid input: bars has unknown symbols")
+(check_raises "zero price" (run_with (bar1 T0 'X 0 10) no_tg) "bt: invalid input: non-positive bar price")
+(check_raises "null price" (run_with (bar1 T0 'X 10 0Nl) no_tg) "bt: invalid input: null bar price")
+(check_raises "duplicate bar"
+              (run_with (table [ts sym o c] (list (enlist T0 T0) [X X] [10 11] [10 11])) no_tg)
+              "bt: invalid input: bars has duplicate*")
+(check_raises "target at end" (run_with bars (tg1 (+ T0 (* 3 H)) 'X 1)) "bt: invalid input: targets outside*")
+(check_raises "null target" (run_with bars (tg1 T0 'X 0Nl)) "bt: invalid input: null target")
+
+;; ---- input row order does not matter: fixture 1, every input reversed
+(set dir "test/fixture1/")
+(set f1_ins (read-csv [SYM I64 I64 I64] (concat dir "instruments.csv")))
+(set f1_bars (read-csv [TIMESTAMP SYM I64 I64] (concat dir "bars.csv")))
+(set f1_tg (read-csv [TIMESTAMP SYM I64] (concat dir "targets.csv")))
+(set f1_cfg {cash0: 100000 fee_ppm: 1000 start: 2026.01.01D00:00:00.000 period: 0D01:00:00 steps: 4
+             max_weight_ppm: 1000000000 max_gross_ppm: 1000000000 buy_policy: 'REJECT})
+(bt_run f1_cfg f1_ins f1_bars f1_tg)
+(set out ["targets" "orders" "order_events" "fills" "ledger" "positions" "equity"])
+(set a (list bt.targets bt.orders bt.order_events bt.fills bt.ledger bt.positions bt.equity))
+(bt_run f1_cfg (reverse f1_ins) (reverse f1_bars) (reverse f1_tg))
+(set b (list bt.targets bt.orders bt.order_events bt.fills bt.ledger bt.positions bt.equity))
+(times [j (count out)]
+  (check_tbl (format "reversed inputs: %" (at out j)) (at b j) (at a j)))
+
+(println "PASS fixture2")

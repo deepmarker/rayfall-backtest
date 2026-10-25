@@ -1,0 +1,79 @@
+;; One benchmark measurement: load a snapshot, run one mode, print one JSON
+;; line of timings (ms). Run from backtest; bench/run.sh drives it.
+;;
+;;   rayforce bench/bench.rfl -- -data DIR -mode MODE -per_day N [-kernel FILE]
+;;
+;; -kernel selects the kernel (default bt.rfl; ref/bt_ref.rfl for the scalar
+;; reference, which has no features mode).
+;;
+;; Modes separate the costs of a run:
+;;   kernel  bt_run with no targets: mark, snapshot and the empty decide/fill
+;;           phases at every step
+;;   hold    bt_run_strategy with a strategy that holds: adds building the view
+;;           and the context at every step
+;;   trend, xsmom
+;;           the example strategy on the view; strategy_ms is the time inside
+;;           it. Then the run checks and the metrics, as run.rfl does
+;;   xsmomf  xsmom in features mode (with xsmom_prepare): no view; prepare_ms is
+;;           the one-off feature computation, included in run_ms
+;; Strategy windows are in days and scaled by per_day (bars per day), so an
+;; hourly run rebalances weekly like a daily one. The rules are the daily ones:
+;; the numbers measure cost, not strategy behaviour.
+
+(set args (at (.sys.args) 'user))
+(set kernel (at args 'kernel))
+(load (if (or (nil? kernel) (== 0 (count kernel))) "bt.rfl" kernel))
+(load "report.rfl")
+(load "strategies/xsmom.rfl")
+(load "strategies/trend.rfl")
+
+(set data_dir (concat (at args 'data) "/"))
+(set mode (at args 'mode))
+(set per_day (as 'I64 (at args 'per_day)))
+
+(set bench {})
+(set bench.load_ms
+  (timeit (do
+            (set instruments (read-csv [SYM I64 I64 I64 STR STR] (concat data_dir "instruments.csv")))
+            (set bars (read-csv [TIMESTAMP SYM I64 I64 I64 I64 I64] (concat data_dir "bars.csv"))))))
+
+(set period (div 1D per_day))
+(set steps (count (distinct (at bars 'ts))))
+(set cfg (dict [cash0 fee_ppm start period steps max_weight_ppm max_gross_ppm buy_policy]
+               (list 10000000000000 1000 (min (at bars 'ts)) period steps 400000 1000000 'SCALE)))
+
+;; Windows in days scale by per_day; the rules are the daily ones.
+(set st_warmup (* 91 per_day))
+(set trend_p (dict [lookback vol_window vol_target every buffer]
+                   (list (* 90 per_day) (* 30 per_day) 0.5 (* 7 per_day) 0.98)))
+(set xsmom_p (dict [lookback top every buffer] (list (* 28 per_day) 3 (* 7 per_day) 0.98)))
+
+;; Timings (ms) and the values the timed calls return.
+(set bench.strategy_ms 0.0)
+(set bench.prepare_ms 0.0)
+(set bench.run_ms 0.0)
+(set bench.check_ms 0.0)
+(set bench.metrics_ms 0.0)
+(set timed_prepare (fn [f] (fn [b p]
+  (set bench.prepare_ms (timeit (set bench.features (f b p))))
+  bench.features)))
+(set timed (fn [f] (fn [ctx]
+  (set bench.strategy_ms (+ bench.strategy_ms (timeit (set bench.targets (f ctx)))))
+  bench.targets)))
+
+(if (== mode "kernel")
+    (set bench.run_ms (timeit (bt_run cfg instruments bars bt_no_targets)))
+    (== mode "hold")
+    (set bench.run_ms (timeit (bt_run_strategy cfg instruments bars (bt_strategy 'hold {} (fn [ctx] st_hold) 0Nl))))
+    (do
+      (let s (if (== mode "xsmomf") (bt_strategy 'xsmom xsmom_p (timed xsmom_f) (timed_prepare xsmom_prepare))
+                 (== mode "xsmom") (bt_strategy 'xsmom xsmom_p (timed xsmom) 0Nl)
+                 (== mode "trend") (bt_strategy 'trend trend_p (timed trend) 0Nl)
+                 (raise (format "bench: unknown mode %" mode))))
+      (set bench.run_ms (timeit (bt_run_strategy cfg instruments bars s)))
+      (set bench.check_ms (timeit (do (bt_check_identities) (bt_check_limits) (bt_check_attribution (bt_attribution)))))
+      (set bench.metrics_ms (timeit (set bench.metrics (bt_metrics st_warmup))))))
+
+(println (format "{\"mode\": \"%\", \"instruments\": %, \"steps\": %, \"bars\": %, \"fills\": %, \"load_ms\": %, \"run_ms\": %, \"prepare_ms\": %, \"strategy_ms\": %, \"check_ms\": %, \"metrics_ms\": %}"
+                 mode (count instruments) steps (count bars) (count bt.fills)
+                 bench.load_ms bench.run_ms bench.prepare_ms bench.strategy_ms bench.check_ms bench.metrics_ms))

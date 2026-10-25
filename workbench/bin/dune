@@ -1,0 +1,7 @@
+(executable
+ (name workbench_bundle)
+ (public_name rayfall-backtest-bundle)
+ (package rayfall-backtest)
+ (preprocess
+  (pps ppx_jane))
+ (libraries core core_unix.command_unix async backtest_bundle))

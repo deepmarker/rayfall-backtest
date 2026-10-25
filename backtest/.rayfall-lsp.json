@@ -1,0 +1,4 @@
+{
+  "entrypoints": ["run.rfl"],
+  "workingDirectory": "."
+}

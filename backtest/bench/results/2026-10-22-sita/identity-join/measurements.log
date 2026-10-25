@@ -1,0 +1,10 @@
+baseline True 4.038 1134.59 1646740
+candidate True 3.899 1013.19 1628576
+candidate False 3.921 1033.27 1626288
+candidate False 3.917 1056.53 1628440
+baseline False 4.017 1146.35 1646800
+baseline False 3.997 1120.7 1646432
+candidate False 3.898 1013.85 1626696
+baseline False 4.007 1139 1646408
+baseline {'wall_s': 4.007334209003602, 'check_ms': 1139, 'rss_kb': 1646432}
+candidate {'wall_s': 3.916778405000514, 'check_ms': 1033.27, 'rss_kb': 1626696}
