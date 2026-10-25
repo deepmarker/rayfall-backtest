@@ -3,7 +3,17 @@ on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
 jobs:
-  headless:
+  backtester:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build pinned Rayforce
+        run: |
+          bash ci/build-rayforce.sh "$RUNNER_TEMP/rayforce"
+          echo "$RUNNER_TEMP/rayforce" >> "$GITHUB_PATH"
+      - name: Test standalone backtester
+        run: make kernel-test sample-data
+  reader:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
@@ -12,14 +22,14 @@ jobs:
       - uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 5.5.1
-      - name: Install headless dependencies
+      - name: Install OCaml reader dependencies
         run: opam exec -- make deps
       - name: Build pinned Rayforce
         run: |
           bash ci/build-rayforce.sh "$RUNNER_TEMP/rayforce"
           echo "$RUNNER_TEMP/rayforce" >> "$GITHUB_PATH"
-      - name: Check headless build and tests
-        run: opam exec -- make build test kernel-test live-test saved-test
+      - name: Check OCaml reader build and tests
+        run: opam exec -- make build test live-test saved-test
       - name: Check formatting
         run: |
           opam install -y ocamlformat.0.29.0
