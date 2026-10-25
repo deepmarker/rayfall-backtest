@@ -29,6 +29,11 @@ The experiment text API and contract are still upstream proposals.
 
 ## Contract under discussion
 
+The [proposed v1 tables](../../workbench/doc/rayfall-data-contract-v1.md)
+spell out type/identity, reader boundaries and resource-limit accounting,
+following Morsel's latest feedback. Numerical limits and API details remain
+proposals for upstream agreement.
+
 For a supported data value, the future exact writer/data reader pair must
 preserve type, container shape and contents. Exact integers, timestamps and
 spans cannot pass through floating-point approximations. Display precision

@@ -148,3 +148,17 @@ step. It probes trusted values through the current legacy text path and uses
 independent type/shape/content predicates with negative controls. It does not
 provide a data-only reader. Its README records the contract questions, current
 coverage, known failures and the conditions for adapting it to upstream APIs.
+
+## Proposed v1 agreement tables
+
+Morsel's [latest reply](https://github.com/RayforceDB/rayforce/issues/994#issuecomment-6398774965)
+on 2026-10-25 proposes preserving ordinary data types/widths/shapes/text bytes,
+exact finite floats with the existing null model, a fixed constructor grammar
+and comprehensive resource budgets. It requests a small v1 agreement table and
+explicitly remains design advice, not an adopted API. Morsel read the corpus
+but did not run it.
+
+The [proposed v1 type/identity/limit tables](rayfall-data-contract-v1.md)
+make those decisions reviewable. Numerical budgets and signed-zero behavior
+are marked as proposals; neither they nor cross-version compatibility are
+claimed as upstream guarantees.
