@@ -144,3 +144,23 @@ coverage and the actual text reader/writer remain future work.
 
 The workbench's engine pin and launch path do not depend on this experimental
 branch. Recheck the PR's reviewed revision and scope before adopting anything.
+
+### Review follow-up: ownership and scratch isolation
+
+Morsel's review found that early release refunded a child still retained by a
+context-owned LIST. Commit
+[`8cf6b69e`](https://github.com/vbmithr/rayforce/commit/8cf6b69e) keeps ledger
+ownership and charging while shared, permits later unique release and makes
+close terminal without discarding the original failure status. Two regressions
+cover one/multiple parent aliases, replacement rejection and reclamation.
+All twelve reader proof cases pass under ASan/UBSan and TSan locally.
+
+Commit [`b68550d6`](https://github.com/vbmithr/rayforce/commit/b68550d6) fixes
+startup-root assertions after TMPDIR mutation and truncated long-prefix
+splay/compression fixture paths. The four affected normal/equivalence splay,
+parted join and parted DML cases were reproduced and pass after the change
+with a macOS-length prefix on Linux. Twelve source checks pass under that
+prefix, including an explicit environment-change regression. Changed C
+translation units compile cleanly with GCC debug warnings-as-errors. Native
+macOS and full-suite confirmation remain with CI; this is not an acceptance
+claim for the draft PR.
