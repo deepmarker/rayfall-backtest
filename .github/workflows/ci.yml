@@ -1,5 +1,56 @@
 name: CI
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    paths:
+      - '**/*.ml'
+      - '**/*.mli'
+      - '**/*.rfl'
+      - '**/*.c'
+      - '**/*.h'
+      - '**/*.cpp'
+      - '**/*.sh'
+      - '**/*.py'
+      - '**/dune'
+      - '**/dune-project'
+      - '**/dune-workspace'
+      - '**/*.opam'
+      - '**/.ocamlformat'
+      - '**/Makefile'
+      - '.gitmodules'
+      - 'vendor/rayforce-ipc'
+      - 'vendor/imguiml-ft'
+      - 'ci/**'
+      - '.github/workflows/ci.yml'
+      - 'test/roundtrip/cases.json'
+      - 'backtest/test/**/*.csv'
+      - 'workbench/test/fixtures/**'
+      - '!workbench/test/fixtures/**/*.md'
+  pull_request:
+    paths:
+      - '**/*.ml'
+      - '**/*.mli'
+      - '**/*.rfl'
+      - '**/*.c'
+      - '**/*.h'
+      - '**/*.cpp'
+      - '**/*.sh'
+      - '**/*.py'
+      - '**/dune'
+      - '**/dune-project'
+      - '**/dune-workspace'
+      - '**/*.opam'
+      - '**/.ocamlformat'
+      - '**/Makefile'
+      - '.gitmodules'
+      - 'vendor/rayforce-ipc'
+      - 'vendor/imguiml-ft'
+      - 'ci/**'
+      - '.github/workflows/ci.yml'
+      - 'test/roundtrip/cases.json'
+      - 'backtest/test/**/*.csv'
+      - 'workbench/test/fixtures/**'
+      - '!workbench/test/fixtures/**/*.md'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:

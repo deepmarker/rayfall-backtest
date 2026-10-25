@@ -101,6 +101,9 @@ backtester (Rayforce, Python and shell tools, without OCaml or submodules)
 and the workbench. The workbench job shares one OCaml dependency installation
 and build across reader, storage and graphical checks, with separate test
 steps for readable failures. Both jobs build a pinned Rayforce revision.
+Automatic CI runs on source, build/dependency configuration and test-input
+changes; documentation-only changes do not trigger it. Manual runs remain
+available through GitHub Actions.
 Normal CI uses small committed fixtures and a seeded synthetic snapshot;
 it does not download market history. Full snapshot/benchmark runs remain
 explicit targets. Optional Coinlake ingestion additionally needs Databento's
