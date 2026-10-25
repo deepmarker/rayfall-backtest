@@ -107,6 +107,10 @@ Python client and credentials configured through the environment.
 
 ## Documentation
 
+- [Backtest parameters: current ownership and intended design](workbench/doc/backtest-parameters.md).
+
+- [GUI backlog: missing features, usability issues and validation gaps](workbench/doc/gui-backlog.md).
+
 - [Backtester manual](backtest/doc/manual.md) and [accounting contracts](backtest/doc/contracts.md).
 - [Native workbench](workbench/doc/native-viewer.md) and [saved-run format](workbench/doc/saved-runs.md).
 - [Shared interfaces](workbench/doc/gui-interfaces.md) and [architecture](workbench/doc/gui-design.md).

@@ -195,11 +195,7 @@ dune runtest --root .. vendor/imguiml-ft/test
 
 ## Remaining work
 
-Each tab displays one saved run at a time. Multiple tabs may run or inspect
-different backtests concurrently. Editable run configuration
-and strategy parameters, numerical progress, cross-run comparison,
-instrument/order filters, persisted view preferences and richer chart axes remain
-future work. The launcher adapts the existing CLI; the full structured
-`Providers.Runner`/`run_spec` contract is not implemented yet. Large real-run
-latency and memory measurements are still needed beyond the deterministic
-fixture and bounded-query tests.
+See the [GUI backlog](gui-backlog.md) for prioritized missing features,
+usability issues, validation gaps and completion criteria. The
+[architecture](gui-design.md) and [shared interfaces](gui-interfaces.md)
+provide the design context.
