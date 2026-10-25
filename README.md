@@ -46,15 +46,22 @@ snapshots and verifies their pinned checksums.
 
 ## Run the desktop workbench
 
-Create an OCaml 5.5.1 switch and activate it:
+Create a project-local OCaml 5.5.2 switch with frame pointers and activate it:
 
 ```sh
-opam switch create . ocaml-base-compiler.5.5.1
-eval "$(opam env)"
+opam switch create . ocaml-variants.5.5.2+options ocaml-option-fp --no-install
+eval "$(opam env --switch=. --set-switch)"
 make deps-gui
 make sample-data
 make gui
 ```
+
+With direnv's shell hook enabled, run `direnv allow` once. The checked-in
+`.envrc` selects this checkout's switch on entry, even if another switch was
+previously active. Without direnv, repeat the explicit `opam env` command in
+each new shell. Run `make deps-gui` after dependency changes; ordinary `make`
+only builds and does not install packages. CI uses standard OCaml 5.5.2;
+frame pointers are enabled locally for profiling.
 
 Choose a strategy and the generated sample (or a downloaded snapshot), then click **Run strategy**.
 The folder icon opens a saved run. Drag the chart to pan, wheel to zoom and

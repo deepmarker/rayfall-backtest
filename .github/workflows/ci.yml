@@ -25,7 +25,7 @@ jobs:
           sudo apt-get install -y cmake libglfw3-dev libglew-dev libgl1-mesa-dev libfreetype-dev xvfb xauth libgl1-mesa-dri zenity fontconfig fonts-dejavu-core
       - uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 5.5.1
+          ocaml-compiler: "5.5.2"
       - name: Install workbench dependencies
         run: opam exec -- make deps-gui
       - name: Build pinned Rayforce
