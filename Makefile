@@ -38,3 +38,8 @@ data:
 	$(MAKE) -C backtest data
 sample-data:
 	$(MAKE) -C backtest sample-data
+
+# Diagnostic compatibility baseline; known upstream failures remain visible.
+.PHONY: compat-test
+compat-test:
+	RAYFORCE=$(RAYFORCE) python3 -I test/roundtrip/probe.py

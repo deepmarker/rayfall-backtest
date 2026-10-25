@@ -56,6 +56,9 @@ limits.
 
 ## Intended design
 
+The agreed native file format and upstream reader/writer requirements are in
+[Rayfall experiment files](rayfall-experiment-format.md).
+
 Keep three distinct responsibilities:
 
 - **Strategy definition:** executable callbacks, parameter schema and defaults,

@@ -87,6 +87,7 @@ these targets do not build ImGui or require its native graphics libraries.
 ```sh
 make test                 # OCaml model, codec, storage, controller arithmetic
 make kernel-test          # offline Rayfall fixtures and Python accounting oracle
+make compat-test          # diagnostic legacy text round-trip corpus
 make live-test saved-test # real IPC, native publication and reopen checks
 make gui-test             # real GUI under Xvfb, synthetic mouse and GPU checks
 make launcher-test        # real trend/baseline launch on generated sample data
@@ -106,6 +107,8 @@ explicit targets. Optional Coinlake ingestion additionally needs Databento's
 Python client and credentials configured through the environment.
 
 ## Documentation
+
+- [Rayfall experiment format and upstream dependencies](workbench/doc/rayfall-experiment-format.md).
 
 - [Backtest parameters: current ownership and intended design](workbench/doc/backtest-parameters.md).
 

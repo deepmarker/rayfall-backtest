@@ -53,7 +53,11 @@ do not assume the earlier test covers every desktop configuration.
 The launcher currently adapts `run.sh`; the structured `Providers.Runner` and
 `run_spec` path is still incomplete. GUI-01 should build on the
 [shared interfaces](gui-interfaces.md), rather than grow source-editing or
-configuration-inference workarounds. Effective configuration is already
+configuration-inference workarounds. Use the agreed
+[Rayfall experiment format](rayfall-experiment-format.md), which tracks the
+upstream exact-text/data-reader dependencies. A focused
+[contract corpus](../../test/roundtrip/README.md) now reproduces known text
+failures; the experiment reader and GUI editor remain open. Effective configuration is already
 recorded in native bundles; editing and replaying it remain GUI work.
 
 Keep financial calculations and source-of-truth units in Rayforce. Local

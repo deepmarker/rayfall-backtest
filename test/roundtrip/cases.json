@@ -1,0 +1,186 @@
+[
+  {
+    "id": "i64-exact",
+    "value": "9007199254740993",
+    "check": "(and (== (type got) (type original)) (all (== got original)))",
+    "known_issue": null,
+    "reject": "9007199254740992"
+  },
+  {
+    "id": "f64-exact-simple",
+    "value": "0.5",
+    "check": "(and (== (type got) (type original)) (all (== got original)))",
+    "known_issue": null,
+    "reject": "0.6"
+  },
+  {
+    "id": "bool",
+    "value": "true",
+    "check": "(and (== (type got) (type original)) (all (== got original)))",
+    "known_issue": null
+  },
+  {
+    "id": "plain-string",
+    "value": "\"hello\"",
+    "check": "(and (== (type got) (type original)) (all (== got original)))",
+    "known_issue": null,
+    "reject": "\"hellp\""
+  },
+  {
+    "id": "timestamp",
+    "value": "2024.01.02D03:04:05.123456789",
+    "check": "(and (== (type got) (type original)) (all (== got original)))",
+    "known_issue": null,
+    "reject": "2024.01.02D03:04:05.123456788"
+  },
+  {
+    "id": "timespan",
+    "value": "1D",
+    "check": "(and (== (type got) (type original)) (all (== got original)))",
+    "known_issue": null,
+    "reject": "2D"
+  },
+  {
+    "id": "i64-vector",
+    "value": "[1 2 9007199254740993]",
+    "check": "(and (== (type got) (type original)) (== (count got) (count original)) (all (== got original)))",
+    "known_issue": null,
+    "reject": "[1 2]"
+  },
+  {
+    "id": "f64-vector-simple",
+    "value": "[0.5 1.5]",
+    "check": "(and (== (type got) (type original)) (== (count got) (count original)) (all (== got original)))",
+    "known_issue": null
+  },
+  {
+    "id": "string-quote",
+    "value": "\"a\\\"b\"",
+    "check": "(and (== (type got) (type original)) (all (== got original)))",
+    "known_issue": 988
+  },
+  {
+    "id": "string-backslash",
+    "value": "\"C:\\\\new\"",
+    "check": "(and (== (type got) (type original)) (all (== got original)))",
+    "known_issue": 988
+  },
+  {
+    "id": "symbol-in-mixed-list",
+    "value": "(list 1 'trend)",
+    "check": "(and (== (type got) (type original)) (== (count got) 2) (== (at got 0) 1) (== (type (at got 1)) (type (at original 1))) (== (at got 1) (at original 1)))",
+    "known_issue": 989
+  },
+  {
+    "id": "symbol-spaces",
+    "value": "(as 'SYM [\"a b\" \"c\"])",
+    "check": "(and (== (type got) (type original)) (== (count got) (count original)) (all (== got original)))",
+    "known_issue": 989
+  },
+  {
+    "id": "symbol-digits",
+    "value": "(as 'SYM [\"1\" \"2\"])",
+    "check": "(and (== (type got) (type original)) (== (count got) (count original)) (all (== got original)))",
+    "known_issue": 989
+  },
+  {
+    "id": "i16-vector",
+    "value": "[1h 2h]",
+    "check": "(and (== (type got) (type original)) (== (count got) (count original)) (all (== got original)))",
+    "known_issue": 990
+  },
+  {
+    "id": "i32-vector",
+    "value": "[1i 2i]",
+    "check": "(and (== (type got) (type original)) (== (count got) (count original)) (all (== got original)))",
+    "known_issue": 990
+  },
+  {
+    "id": "f64-precision",
+    "value": "0.3333333333333333",
+    "check": "(and (== (type got) (type original)) (all (== got original)))",
+    "known_issue": 990
+  },
+  {
+    "id": "f32-precision",
+    "value": "(as 'F32 [0.123456789])",
+    "check": "(and (== (type got) (type original)) (== (count got) (count original)) (all (== got original)))",
+    "known_issue": 990
+  },
+  {
+    "id": "empty-f64",
+    "value": "(take [1.5] 0)",
+    "check": "(and (== (type got) (type original)) (== (count got) (count original)) (all (== got original)))",
+    "known_issue": 991,
+    "reject": "(take [1] 0)"
+  },
+  {
+    "id": "empty-sym",
+    "value": "(take ['a] 0)",
+    "check": "(and (== (type got) (type original)) (== (count got) (count original)) (all (== got original)))",
+    "known_issue": 991
+  },
+  {
+    "id": "homogeneous-list",
+    "value": "(list 1 2)",
+    "check": "(and (== (type got) (type original)) (== (count got) 2) (== (at got 0) 1) (== (at got 1) 2))",
+    "known_issue": 991,
+    "reject": "[1 2]"
+  },
+  {
+    "id": "integer-dict-keys",
+    "value": "(dict [1 2] [10 20])",
+    "check": "(and (== (type got) (type original)) (== (type (key got)) (type (key original))) (== (count (key got)) 2) (all (== (key got) (key original))) (all (== (value got) (value original))))",
+    "known_issue": 991
+  },
+  {
+    "id": "config-basic",
+    "value": "{cash0: 9007199254740993 period: 1D start: 2024.01.01D00:00:00.000}",
+    "check": "(and\n (== (type got) (type original))\n (all (== (key got) (key original)))\n (== (type (at got 'cash0)) (type (at original 'cash0)))\n (== (at got 'cash0) 9007199254740993)\n (== (type (at got 'period)) (type (at original 'period)))\n (== (at got 'period) 1D)\n (== (type (at got 'start)) (type (at original 'start)))\n (== (at got 'start) (at original 'start)))",
+    "known_issue": null,
+    "reject": "{cash0: 9007199254740992 period: 1D start: 2024.01.01D00:00:00.000}"
+  },
+  {
+    "id": "vector-4096",
+    "value": "(til 4096)",
+    "check": "(and (== (type got) (type original)) (== (count got) (count original)) (all (== got original)))",
+    "known_issue": null
+  },
+  {
+    "id": "vector-4097",
+    "value": "(til 4097)",
+    "check": "(and (== (type got) (type original)) (== (count got) (count original)) (all (== got original)))",
+    "known_issue": 992
+  },
+  {
+    "id": "table-basic",
+    "value": "(table [x] (list [1 2]))",
+    "check": "(and (== (type got) (type original)) (all (== (key got) (key original))) (== (count got) 2) (== (type (at got 'x)) (type (at original 'x))) (all (== (at got 'x) [1 2])))",
+    "known_issue": null,
+    "reject": "(table [x] (list [1 3]))"
+  },
+  {
+    "id": "guid",
+    "value": "(as 'GUID \"0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0\")",
+    "check": "(and (== (type got) (type original)) (== (count got) (count original)) (all (== got original)))",
+    "known_issue": 990
+  },
+  {
+    "id": "list-64",
+    "value": "(map (fn [i] (list i \"x\")) (til 64))",
+    "check": "(and (== (type got) (type original)) (== (count got) 64)\n (all (map (fn [i]\n  (and (== (type (at got i)) (type (at original i)))\n       (== (count (at got i)) 2)\n       (== (type (at (at got i) 0)) (type i))\n       (== (at (at got i) 0) i)\n       (== (type (at (at got i) 1)) (type \"x\"))\n       (== (at (at got i) 1) \"x\"))) (til 64))))",
+    "known_issue": null
+  },
+  {
+    "id": "list-65",
+    "value": "(map (fn [i] (list i \"x\")) (til 65))",
+    "check": "(and (== (type got) (type original)) (== (count got) 65)\n (all (map (fn [i]\n  (and (== (type (at got i)) (type (at original i)))\n       (== (count (at got i)) 2)\n       (== (type (at (at got i) 0)) (type i))\n       (== (at (at got i) 0) i)\n       (== (type (at (at got i) 1)) (type \"x\"))\n       (== (at (at got i) 1) \"x\"))) (til 65))))",
+    "known_issue": 992
+  },
+  {
+    "id": "i64-null-vector",
+    "value": "[1 0N 3]",
+    "check": "(and (== (type got) (type original)) (== (count got) 3) (== (at got 0) 1) (nil? (at got 1)) (== (at got 2) 3))",
+    "known_issue": null
+  }
+]
