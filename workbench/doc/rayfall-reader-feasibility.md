@@ -109,3 +109,38 @@ The useful next upstream deliverables are these two narrow capabilities and
 their focused tests. Syntax choices, default numbers and complete reader/writer
 implementation can follow. No application-side fallback should mask their
 absence.
+
+## Subsequent implementation proofs
+
+Draft upstream [PR #1019](https://github.com/RayforceDB/rayforce/pull/1019)
+implements the two boundaries in separate commits on `dev` base `e463902f`:
+
+- [`c2aa2a4b`](https://github.com/vbmithr/rayforce/commit/c2aa2a4b): explicit
+  reader-owned allocation context and string/I64-vector/LIST builders. Includes
+  exact charged sizing, context-local post-admission failure injection,
+  replacement peaks and an admitted path that skips oversized cache matches.
+- [`978d78f1`](https://github.com/vbmithr/rayforce/commit/978d78f1): separate
+  staged value-symbol publication, private replacement capacity and
+  nonallocating commit. Existing partial-batch callers are unchanged.
+
+Focused ASan/UBSan validation: ten new proof tests, three existing direct-cache
+cases, four single-name atomic-intern cases, twenty arena cases and eleven
+source checks pass. The concurrent publication case also passes ThreadSanitizer
+with no reported race. The full suite is left to CI.
+
+The failed-publication tests force capacity growth and check unchanged names,
+IDs, outputs, global table descriptor and existing dotted metadata, plus system
+allocation counters returning to baseline after cleanup. A real concurrent
+ordinary intern caller agrees on IDs. A prebuilt LIST result is fixed up and
+retained without allocating after publication.
+
+This is a draft implementation basis, not an adopted format or full reader.
+It does not establish nonfailing DICT/TABLE finalization. Partially materialized
+lazy symbol tables are explicitly rejected. The record ledger and per-commit
+arena chunk need production cost work; host symbol quotas are not imposed on
+unrelated intern entry points. The allocation budget measures owned blocks,
+not process RSS or all allocator infrastructure. Parser budgets, full type
+coverage and the actual text reader/writer remain future work.
+
+The workbench's engine pin and launch path do not depend on this experimental
+branch. Recheck the PR's reviewed revision and scope before adopting anything.

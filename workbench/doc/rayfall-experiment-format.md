@@ -179,3 +179,9 @@ semantics. The [feasibility notes](rayfall-reader-feasibility.md) inspect the
 pinned allocator and intern APIs and identify the focused upstream proofs
 needed for budgeted construction and whole-document symbol commit. This is
 not adoption or a delivery commitment.
+
+Two implementation proofs are now available in draft
+[PR #1019](https://github.com/RayforceDB/rayforce/pull/1019). The
+[feasibility notes](rayfall-reader-feasibility.md#subsequent-implementation-proofs)
+record their focused sanitizer evidence and remaining gaps. This is progress
+on prerequisites, not completion of #994 or GUI experiment import.
