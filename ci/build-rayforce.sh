@@ -9,4 +9,9 @@ if [[ ! -d $destination/.git ]]; then
 fi
 git -C "$destination" fetch --depth 1 origin "$revision"
 git -C "$destination" checkout --detach FETCH_HEAD
-make -C "$destination" release -j"$(getconf _NPROCESSORS_ONLN)" CC=clang
+# A runner's advertised native CPU features can contain unsupported combinations.
+case "$(uname -m)" in
+  x86_64) march=${RAY_MARCH:-x86-64-v3} ;;
+  *) march=${RAY_MARCH:-native} ;;
+esac
+make -C "$destination" release -j"$(getconf _NPROCESSORS_ONLN)" CC=clang RAY_MARCH="$march"

@@ -25,7 +25,9 @@ licenses. Data downloads, saved runs and local build products are ignored.
 Install Rayforce containing commit `65de9fe5` or later. CI pins its full
 revision in [ci/rayforce-revision](ci/rayforce-revision). To build that revision
 locally, install Git, Clang and Make, then run `make engine` and add it to
-your path with `export PATH="$PWD/.engine:$PATH"`.
+your path with `export PATH="$PWD/.engine:$PATH"`. On x86-64 this helper uses
+the explicit `x86-64-v3` baseline for reproducible builds; override `RAY_MARCH`
+if your local CPU needs another target. Other architectures default to native.
 
 ```sh
 make -C backtest data
