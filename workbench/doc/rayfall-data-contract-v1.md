@@ -111,8 +111,8 @@ open; any effective limits must be inspectable/documented and finite.
 | Data elements/nodes | 1,000,000 | Count data occurrences, not unique addresses: one per scalar/null, typed vector element and container. Dicts charge their key/value collections recursively; tables charge their name collection and columns recursively. Do not double-charge a scalar occurrence for its vector slot. Literal type tags/schema descriptors are grammar nodes, not extra data scalars. |
 | Grammar/parser nodes | 1,000,000 | Independently count every syntax node, constructor wrapper, type tag and schema descriptor created or visited, including speculative/retried work. Charge a batch before allocating it. A streaming parser must enforce the equivalent token/production budget, not skip this bound because it has no AST. |
 | Symbol bytes | 1 MiB total per read | Sum decoded bytes of every symbol occurrence before interning, not just distinct names. Keep limits across the whole read, not separately per dictionary or vector. |
-| Construction allocation | 64 MiB peak charged live bytes | Charge allocator-rounded capacities and per-allocation headers for reader-owned input copies, parser/token/AST buffers, decoded text, values, temporaries, staged symbols and read-attributable intern-table growth. Requested payload bytes alone are insufficient. Reserve before allocating/growing and use overflow-checked arithmetic. |
-| Writer output bytes | 8 MiB | Cap emitted encoded bytes, including escaping and type syntax. Align defaults with reader input capacity; fail explicitly if a value cannot fit. |
+| Construction allocation | 64 MiB peak charged live bytes | Charge each allocator-rounded allocation including its headers exactly once for reader-owned input copies, parser/token/AST buffers, decoded text, values, temporaries, staged symbols and read-attributable intern-table growth. Requested payload bytes alone are insufficient. Reserve before allocating/growing and use overflow-checked arithmetic. |
+| Writer output bytes | 8 MiB | Cap emitted encoded bytes, including escaping and type syntax. A matching input byte cap is necessary but insufficient for reader acceptance; fail explicitly if output cannot fit. |
 
 Each cap is inclusive: reaching it is allowed if other caps are satisfied;
 exceeding it fails before the prohibited allocation/work. Count decoded bytes
@@ -123,10 +123,15 @@ constructing new ones: input/node caps bound cumulative input-driven work,
 while allocation is explicitly a peak-live cap. Reject oversized integer
 length calculations instead of wrapping them.
 
-Allocation accounting distinguishes requested payload bytes from charged
-bytes. The charged size is the allocator's size-class/alignment-rounded block
-capacity plus its known header cost, even when a block comes from a cached
-slab. Fixed bookkeeping for each block and reader instance is also charged.
+Allocation accounting distinguishes requested payload bytes from one charged
+allocation size: the actual selected block capacity including every owned
+header/prefix/alignment contribution **exactly once**. If an allocator's size
+already includes a header, do not add it again. Cached blocks still count;
+if cache reuse selects a larger block, charge that selected capacity rather
+than the minimum for the request. Reader bookkeeping is charged separately
+only when it is not already inside a charged block. Budget checks are local
+to reader-owned operations; do not add reader policy checks to unrelated
+engine kernels.
 For resize-by-copy, charge old and replacement blocks concurrently until the
 old one is released. For shared intern-table growth, charge new capacity and
 temporary rehash storage attributable to this read; already-live global
@@ -139,6 +144,28 @@ implementation must expose budget-aware allocation/charge sizes rather than
 silently substitute requested byte counts for this definition. Exact allocator
 header charging and syntax-node lowering still require upstream agreement.
 No unbounded pre-scan or unrestricted evaluation may precede these checks.
+
+## Writer success and reader acceptance
+
+Matching writer-output and reader-input byte caps does **not** guarantee a
+default round trip. Reader depth, data/grammar node counts, symbol admission
+and construction allocation may still reject a successfully written value.
+A serialized small value can require larger temporary construction storage.
+This draft explicitly does not promise default-profile closure under
+write/read, and a writer success must not be presented as proof that the
+current reader profile accepts its output.
+
+A future paired profile may promise closure by validating all relevant reader
+constraints, including its version and construction plan, before writer
+success. That would be a separate explicit guarantee with tests for each
+budget, not an inference from equal byte caps. Process/session symbol
+admission remains runtime-dependent and must still be checked at commit.
+Report the effective profile and the exceeded budget when rejecting input;
+do not silently raise limits or fall back to evaluation.
+
+See the [implementation feasibility notes](rayfall-reader-feasibility.md) for
+the pinned engine's existing primitives, missing capabilities and proposed
+proofs before syntax/defaults are finalized.
 
 ## Agreement and test map
 

@@ -171,3 +171,11 @@ schemas, intrinsic constructor operations, allocator-rounded budget accounting
 and failure-atomic symbol staging/commit. Successful-read intern growth still
 requires a host admission/lifetime policy; the per-read allocation budget is
 not a process-RSS cap. These revisions remain proposals for upstream agreement.
+
+Morsel's [next review](https://github.com/RayforceDB/rayforce/issues/994#issuecomment-6399075780)
+accepts the seven operations/accounting boundaries as a review basis, while
+requesting a single charged allocation size and explicit writer/reader limit
+semantics. The [feasibility notes](rayfall-reader-feasibility.md) inspect the
+pinned allocator and intern APIs and identify the focused upstream proofs
+needed for budgeted construction and whole-document symbol commit. This is
+not adoption or a delivery commitment.
