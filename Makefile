@@ -1,9 +1,9 @@
 .DEFAULT_GOAL := build
 .PHONY: deps deps-gui build build-gui test kernel-test test-full gui live-test saved-test gui-test launcher-test fmt fmt-check engine
 deps:
-	opam install --deps-only --with-test -y rayfall-backtest.opam vendor/rayforce-ipc/*.opam
+	opam install --deps-only --with-test -y ./rayfall-backtest.opam vendor/rayforce-ipc/*.opam
 deps-gui:
-	opam install --deps-only --with-test -y rayfall-backtest.opam rayfall-backtest-gui.opam vendor/rayforce-ipc/*.opam vendor/imguiml-ft/imguiml-ft.opam
+	opam install --deps-only --with-test -y ./rayfall-backtest.opam ./rayfall-backtest-gui.opam vendor/rayforce-ipc/*.opam vendor/imguiml-ft/imguiml-ft.opam
 build:
 	$(MAKE) -C workbench build
 build-gui:
@@ -32,3 +32,9 @@ fmt-check:
 engine:
 	bash ci/build-rayforce.sh .engine
 RAYFORCE ?= rayforce
+
+.PHONY: data sample-data
+data:
+	$(MAKE) -C backtest data
+sample-data:
+	$(MAKE) -C backtest sample-data

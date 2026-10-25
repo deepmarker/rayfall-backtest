@@ -80,3 +80,13 @@ fmt:
 
 fmt-check:
 	$(FMT) --check $(RFL)
+
+# Small reproducible local snapshot for the GUI and integration tests.
+.PHONY: sample-data
+sample-data:
+	@if test -f data/sample-1d/SHA256SUMS; then \
+	  cd data/sample-1d && sha256sum --quiet --check SHA256SUMS; \
+	else \
+	  python3 -I tools/synth_bars.py --out data/sample-1d --instruments 3 \
+	    --period 1d --from 2023-10-01 --days 1096 --seed 1; \
+	fi

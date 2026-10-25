@@ -1,2 +1,0 @@
-[ perf record: Woken up 7 times to write data ]
-[ perf record: Captured and wrote 3.987 MB data/audit-profiles/xsmomf-hourly.data (31605 samples) ]

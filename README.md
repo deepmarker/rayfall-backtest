@@ -33,6 +33,11 @@ cd backtest
 ./run.sh trend data/binance-spot-1d-2023-10_2026-09 out/trend
 ```
 
+`make sample-data` creates seeded synthetic bars and checksum metadata locally;
+`make data` downloads the pinned public market snapshots. Neither generated
+snapshots nor backtest runs are committed. Synthetic prices are for software
+testing, not strategy evaluation.
+
 The CLI needs Rayforce, Bash, Git, Python 3, `sha256sum` and standard Unix tools.
 It does not need OCaml, OpenGL or a desktop. `make data` downloads public
 snapshots and verifies their pinned checksums.
@@ -45,10 +50,11 @@ Create an OCaml 5.5.1 switch and activate it:
 opam switch create . ocaml-base-compiler.5.5.1
 eval "$(opam env)"
 make deps-gui
+make sample-data
 make gui
 ```
 
-Choose a strategy and a downloaded snapshot, then click **Run strategy**.
+Choose a strategy and the generated sample (or a downloaded snapshot), then click **Run strategy**.
 The folder icon opens a saved run. Drag the chart to pan, wheel to zoom and
 click to select a time in the records. New backtests open in independent tabs.
 
@@ -74,15 +80,15 @@ make test                 # OCaml model, codec, storage, controller arithmetic
 make kernel-test          # offline Rayfall fixtures and Python accounting oracle
 make live-test saved-test # real IPC, native publication and reopen checks
 make gui-test             # real GUI under Xvfb, synthetic mouse and GPU checks
-make launcher-test        # real trend/baseline launch; requires downloaded data
+make launcher-test        # real trend/baseline launch on generated sample data
 make test-full            # all Rayfall fixtures and full-run determinism
 make fmt-check
 ```
 
 Graphical tests need `xvfb`, `xauth` and a working OpenGL driver; Mesa software
 rendering is sufficient. CI separates headless validation from GUI validation
-and builds a pinned Rayforce revision. Normal CI uses small committed fixtures
-and does not download market history. Full snapshot/benchmark runs remain
+and builds a pinned Rayforce revision. Normal CI uses small committed fixtures and a seeded synthetic snapshot;
+it does not download market history. Full snapshot/benchmark runs remain
 explicit targets. Optional Coinlake ingestion additionally needs Databento's
 Python client and credentials configured through the environment.
 
@@ -94,5 +100,5 @@ Python client and credentials configured through the environment.
 - [Kernel benchmarks](backtest/doc/benchmarks.md) and [historical audit](backtest/doc/audit-2026-10-21.md).
 
 Extracted from `deepmarker/dm` at `91e6a4029`, including the subsequent native
-workbench work. Historical benchmark measurements retain their original
-machine/revision context; paths in those records describe the old checkout.
+workbench work. Benchmark scripts and checksum pins are versioned; generated runs, downloaded
+data, profiles and timing results remain local and ignored.

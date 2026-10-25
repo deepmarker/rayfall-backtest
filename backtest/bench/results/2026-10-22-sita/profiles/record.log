@@ -1,2 +1,0 @@
-[ perf record: Woken up 185 times to write data ]
-[ perf record: Captured and wrote 52.287 MB /home/vb/code/dm/rayfall/backtest/data/audit-profiles-2026-10-22/hourly-xsmomf.perf.data (6506 samples) ]

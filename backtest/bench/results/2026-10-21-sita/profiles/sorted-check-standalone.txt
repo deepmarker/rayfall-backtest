@@ -1,4 +1,0 @@
-cores=1 numeric=0 rows=2630400 sort_ms=115.585
-cores=16 numeric=0 rows=2630400 sort_ms=1406.84
-cores=1 numeric=1 rows=2630400 sort_ms=17.1206
-cores=16 numeric=1 rows=2630400 sort_ms=13.6805

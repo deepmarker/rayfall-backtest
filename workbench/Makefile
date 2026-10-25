@@ -19,4 +19,5 @@ gui: build-gui
 viewer-test: build build-gui
 	bash test/run_viewer.sh ../backtest
 launcher-test: build build-gui
+	$(MAKE) -C .. sample-data
 	bash test/run_launcher.sh ../backtest

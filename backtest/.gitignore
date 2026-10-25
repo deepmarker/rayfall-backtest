@@ -3,3 +3,8 @@ out/
 data/*/
 data/*.tmp/
 data/.cache/
+
+# Reproducible benchmark output stays local.
+bench/results/
+bench/local-mutation/results.csv
+bench/local-mutation/environment.json

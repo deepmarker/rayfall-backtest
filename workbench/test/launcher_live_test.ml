@@ -4,10 +4,7 @@ open Backtest_viewer
 
 let check message yes = if not yes then failwith message
 
-let run backtest_directory service_directory output_parent =
-  let snapshot =
-    Filename.concat backtest_directory "data/binance-spot-1d-2023-10_2026-09"
-  in
+let run backtest_directory service_directory output_parent snapshot =
   let start () =
     Launcher.launch
       ~backtest_directory
@@ -64,6 +61,6 @@ let run backtest_directory service_directory output_parent =
 
 let () =
   let args = Sys.get_argv () in
-  don't_wait_for (run args.(1) args.(2) args.(3) >>= fun () -> Shutdown.exit 0);
+  don't_wait_for (run args.(1) args.(2) args.(3) args.(4) >>= fun () -> Shutdown.exit 0);
   never_returns (Scheduler.go ())
 ;;

@@ -172,8 +172,8 @@ reaped while the first remains active, and checks cancellation on tab close. It 
 working software or hardware OpenGL implementation. Preserve a PPM screenshot
 with `SCREENSHOT=/tmp/workbench.ppm make viewer-test`.
 
-`launcher-test` additionally requires the existing
-`binance-spot-1d-2023-10_2026-09` snapshot. It runs real `trend` and `buyhold`,
+`launcher-test` generates the deterministic `sample-1d` snapshot locally.
+Set `SNAPSHOT=/absolute/path` to test another snapshot. It runs real `trend` and `buyhold`,
 checks native metadata/reopening and active cancellation, exercises GUI
 launch-to-inspection, checks native close while a folder chooser is active,
 and verifies the ordinary CLI still writes its report

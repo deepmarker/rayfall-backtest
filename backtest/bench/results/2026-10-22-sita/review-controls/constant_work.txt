@@ -1,6 +1,0 @@
-case=0|desc=0|valid=1|resolutions=0|ms=0.176792
-case=1|desc=0|valid=1|resolutions=2|ms=0.168897
-case=2|desc=0|valid=1|resolutions=0|ms=1.014274
-case=0|desc=1|valid=1|resolutions=0|ms=0.169989
-case=1|desc=1|valid=1|resolutions=2|ms=0.128201
-case=2|desc=1|valid=1|resolutions=0|ms=0.111028

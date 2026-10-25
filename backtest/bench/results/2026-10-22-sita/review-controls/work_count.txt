@@ -1,4 +1,0 @@
-rows=8|repeat=0|sorted=1|resolutions=0
-rows=8|repeat=1|sorted=1|resolutions=0
-rows=10000|repeat=0|sorted=1|resolutions=0
-rows=10000|repeat=1|sorted=1|resolutions=0

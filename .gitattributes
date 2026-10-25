@@ -1,3 +1,2 @@
-# Preserve verbatim profiler output and historical patch context.
-backtest/bench/results/** -whitespace
+# Preserve historical patch context.
 *.patch -whitespace

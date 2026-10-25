@@ -29,19 +29,6 @@ check the returned row count and final vector sum. Timings exclude startup,
 library loading and printing. Rayforce uses `timeit`; the q-family script
 uses `.z.p`. Other work on the host can affect these observations.
 
-Local measurements on 2026-10-23, median milliseconds of 15 samples per size:
-
-| Runtime | 1,000 steps / 500k rows | 2,000 steps / 1M rows |
-|---|---:|---:|
-| Rayforce with #950 | 3.973 | 7.763 |
-| q | 1.880 | 4.024 |
-| PeachQ | 10.952 | 22.077 |
-| Amber | 0.720 | 1.311 |
-
-`results.csv` records all samples; `environment.json` records
-the measured executables and Amber library hashes. These are observations,
-not performance assertions in the test suite or claims of identical storage.
-
 `functional.rfl` reproduces the old local workaround, rebinding the result
 of functional insert and incrementing the vector functionally. Run it with an
 unmodified release binary:
@@ -50,13 +37,6 @@ unmodified release binary:
 rayforce -c 1 -f backtest/bench/local-mutation/functional.rfl
 ```
 
-One baseline run on the same host took 5,445 ms and 22,821 ms at the two
-sizes, with row-count and vector-sum checks inside the workload. The main
-improvement is removal of quadratic table copying. This change reuses the
-existing table-append and indexed-vector-amend fast paths; it does not make
-every list/concat/storage representation allocation-free. Physical pointer
-checks in `lang/local_mutation_fast_paths` verify unique local table/vector
-engagement and that a real alias still forces a copy.
-
-These comparison artifacts were preserved from Rayforce PR #954 at
-`8bd331c8` and moved outside the upstream engine repository after its audit.
+Generate measurements on your own machine with the commands above. Results
+and executable metadata are local output, not versioned test fixtures. The
+workloads check row counts and vector sums; they do not assert elapsed time.

@@ -78,8 +78,8 @@ packaged engine and library because `amberx` itself is a shell launcher.
 q may have a license-imposed secondary-thread limit. A rejection explicitly
 reporting that limit is saved as `unavailable`, without substituting a smaller
 setting. Other errors, timeouts and incorrect results are recorded and make
-the runner exit nonzero. This machine's q permits at most four secondary
-threads; a q result at setting 16 is therefore unavailable.
+the runner exit nonzero. Unavailable thread settings are reported by the engine and excluded from
+comparisons.
 
 KX documents the [secondary-thread setting](https://code.kx.com/q/basics/cmdline/#-s-secondary-threads)
 and the [sort interface](https://code.kx.com/q/ref/asc/).
@@ -98,14 +98,7 @@ The output directory contains:
 Generated scripts live in a temporary directory. Their content is recoverable
 from the checked-in templates and recorded row/key parameters.
 
-The [2026-10-21 sita results](../results/2026-10-21-sita/symbol-sort/summary.md)
-use Rayforce `2.10.0.r206.g64645998`, PeachQ package `0.88-1`, and q `5`, build
-`2026.07.23`. PeachQ's `.z.K` reports its q compatibility version (`5`), so the
-package version and binary hash distinguish it from KX q.
-
-The [Amber results](../results/2026-10-21-sita/symbol-sort-amber/README.md)
-extend that comparison using package `amber-git r913.g028c808-1`.
-
-A [candidate Rayforce fix and validation](../results/2026-10-21-sita/symbol-sort-rank-fix-final/README.md)
-replace the precheck's locked symbol lookups with prepared lexical ranks.
-The standalone [patch](rayforce-symbol-ranks.patch) includes a regression test.
+Generated measurements are not versioned. Run the commands above to produce
+results and environment metadata on your own machine. The standalone
+[historical candidate patch](rayforce-symbol-ranks.patch) is retained as source
+reference; current Rayforce versions may already include the corresponding fix.

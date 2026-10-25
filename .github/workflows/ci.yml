@@ -46,4 +46,4 @@ jobs:
       - name: Test native GUI with software OpenGL
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
-        run: opam exec -- make build build-gui test gui-test
+        run: opam exec -- make build build-gui test sample-data gui-test launcher-test
