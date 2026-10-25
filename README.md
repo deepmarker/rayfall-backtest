@@ -88,11 +88,12 @@ make fmt-check
 ```
 
 Graphical tests need `xvfb`, `xauth` and a working OpenGL driver; Mesa software
-rendering is sufficient. CI has three independent jobs: the standalone
-backtester (Rayforce, Python and shell tools, without OCaml or submodules),
-the OCaml reader and storage libraries, and the graphical workbench. Each
-builds a pinned Rayforce revision. Normal CI uses small committed fixtures
-and a seeded synthetic snapshot;
+rendering is sufficient. CI has two independent jobs: the standalone
+backtester (Rayforce, Python and shell tools, without OCaml or submodules)
+and the workbench. The workbench job shares one OCaml dependency installation
+and build across reader, storage and graphical checks, with separate test
+steps for readable failures. Both jobs build a pinned Rayforce revision.
+Normal CI uses small committed fixtures and a seeded synthetic snapshot;
 it does not download market history. Full snapshot/benchmark runs remain
 explicit targets. Optional Coinlake ingestion additionally needs Databento's
 Python client and credentials configured through the environment.

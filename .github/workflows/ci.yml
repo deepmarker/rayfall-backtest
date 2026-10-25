@@ -13,28 +13,7 @@ jobs:
           echo "$RUNNER_TEMP/rayforce" >> "$GITHUB_PATH"
       - name: Test standalone backtester
         run: make kernel-test sample-data
-  reader:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          submodules: recursive
-      - uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: 5.5.1
-      - name: Install OCaml reader dependencies
-        run: opam exec -- make deps
-      - name: Build pinned Rayforce
-        run: |
-          bash ci/build-rayforce.sh "$RUNNER_TEMP/rayforce"
-          echo "$RUNNER_TEMP/rayforce" >> "$GITHUB_PATH"
-      - name: Check OCaml reader build and tests
-        run: opam exec -- make build test live-test saved-test
-      - name: Check formatting
-        run: |
-          opam install -y ocamlformat.0.29.0
-          opam exec -- make fmt-check
-  graphical:
+  workbench:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
@@ -53,7 +32,13 @@ jobs:
         run: |
           bash ci/build-rayforce.sh "$RUNNER_TEMP/rayforce"
           echo "$RUNNER_TEMP/rayforce" >> "$GITHUB_PATH"
+      - name: Check OCaml reader build and tests
+        run: opam exec -- make build build-gui test live-test saved-test
+      - name: Check formatting
+        run: |
+          opam install -y ocamlformat.0.29.0
+          opam exec -- make fmt-check
       - name: Test native GUI with software OpenGL
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
-        run: opam exec -- make build build-gui test sample-data gui-test launcher-test
+        run: opam exec -- make sample-data gui-test launcher-test
