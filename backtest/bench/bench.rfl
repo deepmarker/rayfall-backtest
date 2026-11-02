@@ -62,18 +62,18 @@
   bench.targets)))
 
 (if (== mode "kernel")
-    (set bench.run_ms (timeit (bt_run cfg instruments bars bt_no_targets)))
+    (set bench.run_ms (timeit (set res (bt_run cfg instruments bars bt_no_targets))))
     (== mode "hold")
-    (set bench.run_ms (timeit (bt_run_strategy cfg instruments bars (bt_strategy 'hold {} (fn [ctx] st_hold) 0Nl))))
+    (set bench.run_ms (timeit (set res (bt_run_strategy cfg instruments bars (bt_strategy 'hold {} (fn [ctx] st_hold) 0Nl)))))
     (do
       (let s (if (== mode "xsmomf") (bt_strategy 'xsmom xsmom_p (timed xsmom_f) (timed_prepare xsmom_prepare))
                  (== mode "xsmom") (bt_strategy 'xsmom xsmom_p (timed xsmom) 0Nl)
                  (== mode "trend") (bt_strategy 'trend trend_p (timed trend) 0Nl)
                  (raise (format "bench: unknown mode %" mode))))
-      (set bench.run_ms (timeit (bt_run_strategy cfg instruments bars s)))
-      (set bench.check_ms (timeit (do (bt_check_identities) (bt_check_limits) (bt_check_attribution (bt_attribution)))))
-      (set bench.metrics_ms (timeit (set bench.metrics (bt_metrics st_warmup))))))
+      (set bench.run_ms (timeit (set res (bt_run_strategy cfg instruments bars s))))
+      (set bench.check_ms (timeit (do (bt_check_identities res) (bt_check_limits res) (bt_check_attribution res (bt_attribution res)))))
+      (set bench.metrics_ms (timeit (set bench.metrics (bt_metrics res st_warmup))))))
 
 (println (format "{\"mode\": \"%\", \"instruments\": %, \"steps\": %, \"bars\": %, \"fills\": %, \"load_ms\": %, \"run_ms\": %, \"prepare_ms\": %, \"strategy_ms\": %, \"check_ms\": %, \"metrics_ms\": %}"
-                 mode (count instruments) steps (count bars) (count bt.fills)
+                 mode (count instruments) steps (count bars) (count res.fills)
                  bench.load_ms bench.run_ms bench.prepare_ms bench.strategy_ms bench.check_ms bench.metrics_ms))

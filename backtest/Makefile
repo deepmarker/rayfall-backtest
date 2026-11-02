@@ -31,7 +31,7 @@ spot12_SYMS := ADAUSDT AVAXUSDT BCHUSDT BNBUSDT BTCUSDT DOGEUSDT DOTUSDT ETHUSDT
   LINKUSDT LTCUSDT SOLUSDT XRPUSDT
 SNAPSHOTS := spot spot12
 
-.PHONY: data test test-oracle test-run fmt fmt-check $(TESTS)
+.PHONY: data test test-oracle test-locals test-run fmt fmt-check $(TESTS)
 
 data: $(foreach s,$(SNAPSHOTS),data/$($(s)_NAME)/SHA256SUMS)
 
@@ -63,7 +63,12 @@ data/$(coinlake_NAME)/SHA256SUMS: data/$(coinlake_NAME).sha256 tools/fetch_coinl
 	  { echo "make data-coinlake: $(coinlake_NAME) does not match its pinned checksums" >&2; exit 1; }
 	rm -rf data/$(coinlake_NAME) && mv data/$(coinlake_NAME).tmp data/$(coinlake_NAME)
 
-test: $(TESTS) test-oracle
+test: $(TESTS) test-oracle test-locals
+
+# A run writes no global: the kernel may only set at the top level of the file.
+test-locals:
+	@! grep -nE '^[^;]+\(set ' bt.rfl | grep -vE '^[0-9]+:\(set ' || { echo "bt.rfl: set inside a function" >&2; exit 1; }
+	@echo "PASS no global writes in bt.rfl"
 
 test-oracle:
 	RAYFORCE=$(RAYFORCE) python3 -I test/oracle.py

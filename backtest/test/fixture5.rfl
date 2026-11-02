@@ -27,16 +27,16 @@
 (causal "xsmom features" strategies.xsmom)
 
 ;; ---- the checks a run makes; the limit binds
-(bt_run_strategy cfg ins bars strategies.xsmom_view)
-(bt_check_identities)
-(bt_check_limits)
-(bt_check_attribution (bt_attribution))
-(check "a limit binds" (> (count (select {from: bt.targets where: (not (nil? limit))})) 0) true)
+(set res (bt_run_strategy cfg ins bars strategies.xsmom_view))
+(bt_check_identities res)
+(bt_check_limits res)
+(bt_check_attribution res (bt_attribution res))
+(check "a limit binds" (> (count (select {from: res.targets where: (not (nil? limit))})) 0) true)
 
 ;; ---- input row order: reversed instruments and bars give the same records.
-(set fwd (list bt.targets bt.orders bt.order_events bt.fills bt.ledger bt.positions bt.equity))
-(bt_run_strategy cfg (reverse ins) (reverse bars) strategies.xsmom_view)
-(set back (list bt.targets bt.orders bt.order_events bt.fills bt.ledger bt.positions bt.equity))
+(set fwd (list res.targets res.orders res.order_events res.fills res.ledger res.positions res.equity))
+(set res (bt_run_strategy cfg (reverse ins) (reverse bars) strategies.xsmom_view))
+(set back (list res.targets res.orders res.order_events res.fills res.ledger res.positions res.equity))
 (times [j (count fwd)]
   (check_tbl (format "row order %" j) (at back j) (at fwd j)))
 

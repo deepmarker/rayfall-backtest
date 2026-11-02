@@ -35,38 +35,38 @@
                          [100 50 10 200 50 10 200 50 10])))
 (set a_tg (table [ts sym target] (list (enlist T1 T1 T1 T2) [X Y Z Y] [600 600 3000 1000])))
 (set a_cfg (cfg_of 100000 0 3 400000 900000 'REJECT))
-(bt_run a_cfg a_ins a_bars a_tg)
-(bt_check_identities)
-(bt_check_limits)
-(check_col "limits" bt.targets 'sym [X Y Z Y])
-(check_col "limits" bt.targets 'requested [600 600 3000 1000])
-(check_col "limits" bt.targets 'target [360 540 2700 468])
-(check_col "limits" bt.targets 'limit [MAX_GROSS MAX_GROSS MAX_GROSS MAX_GROSS])
-(check_col "limits" bt.fills 'qty [360 540 2700 72])
-(check_col "limits" bt.equity 'equity [100000 100000 136000 136000])
-(check "limits final cash" bt.cash 13600)
+(set res (bt_run a_cfg a_ins a_bars a_tg))
+(bt_check_identities res)
+(bt_check_limits res)
+(check_col "limits" res.targets 'sym [X Y Z Y])
+(check_col "limits" res.targets 'requested [600 600 3000 1000])
+(check_col "limits" res.targets 'target [360 540 2700 468])
+(check_col "limits" res.targets 'limit [MAX_GROSS MAX_GROSS MAX_GROSS MAX_GROSS])
+(check_col "limits" res.fills 'qty [360 540 2700 72])
+(check_col "limits" res.equity 'equity [100000 100000 136000 136000])
+(check "limits final cash" res.cash 13600)
 
 ;; positive control: the check fails on a run that broke a tighter limit
-(set bt.max_weight_ppm 300000)
-(check_raises "limit check catches max_weight" bt_check_limits "bt: a target exceeds max_weight")
-(set bt.max_weight_ppm 400000)
-(set bt.max_gross_ppm 500000)
-(check_raises "limit check catches max_gross" bt_check_limits "bt: targets exceed max_gross")
+(set tighter (fn [k ppm] (concat res (dict (enlist k) (list ppm)))))
+(check_raises "limit check catches max_weight" (fn [] (bt_check_limits (tighter 'max_weight_ppm 300000)))
+              "bt: a target exceeds max_weight")
+(check_raises "limit check catches max_gross" (fn [] (bt_check_limits (tighter 'max_gross_ppm 500000)))
+              "bt: targets exceed max_gross")
 
 ;; the input row order does not matter
-(set out (fn [] (list bt.targets bt.orders bt.order_events bt.fills bt.ledger bt.positions bt.equity)))
-(bt_run a_cfg a_ins a_bars a_tg)
+(set out (fn [] (list res.targets res.orders res.order_events res.fills res.ledger res.positions res.equity)))
+(set res (bt_run a_cfg a_ins a_bars a_tg))
 (set fwd (out))
-(bt_run a_cfg (reverse a_ins) (reverse a_bars) (reverse a_tg))
+(set res (bt_run a_cfg (reverse a_ins) (reverse a_bars) (reverse a_tg)))
 (set back (out))
 (times [j (count fwd)]
   (check_tbl (format "row order %" j) (at back j) (at fwd j)))
 
 ;; a strategy cannot bypass the limits
-(bt_run_strategy a_cfg a_ins a_bars
-                 (bt_strategy 'greedy {} (fn [ctx] (if (== (at ctx 'k) 1) (st_targets [X] [1000000]) st_hold)) 0Nl))
-(check_col "strategy capped" (select {from: bt.targets where: (== ts T1)}) 'target [400])
-(check_col "strategy capped" (select {from: bt.targets where: (== ts T1)}) 'limit [MAX_WEIGHT])
+(set res (bt_run_strategy a_cfg a_ins a_bars
+                          (bt_strategy 'greedy {} (fn [ctx] (if (== (at ctx 'k) 1) (st_targets [X] [1000000]) st_hold)) 0Nl)))
+(check_col "strategy capped" (select {from: res.targets where: (== ts T1)}) 'target [400])
+(check_col "strategy capped" (select {from: res.targets where: (== ts T1)}) 'limit [MAX_WEIGHT])
 
 ;; ---- B. shared cash. Cash 10000, fee 10 bp. Targets X 50, Y 98 are worth
 ;; ---- 9900 at the T0 closes, but X opens T1 at 110 and Y at 55:
@@ -78,26 +78,26 @@
 
 ;; SCALE: f = (10000 - 2) / 10902; X floor(50 f) = 45, Y floor(98 f) = 89.
 ;; X 4950 + fee 5, Y 4895 + fee 5: 9855, leaving 145.
-(bt_run (cfg_of 10000 1000 2 1000000 1000000 'SCALE) b_ins b_bars b_tg)
-(bt_check_identities)
-(check_col "scale" bt.fills 'qty [45 89])
-(check_col "scale" bt.fills 'fee [5 5])
-(check_col "scale" (select {from: bt.order_events where: (== event 'FILLED)}) 'reason [SCALED SCALED])
-(check "scale cash" bt.cash 145)
+(set res (bt_run (cfg_of 10000 1000 2 1000000 1000000 'SCALE) b_ins b_bars b_tg))
+(bt_check_identities res)
+(check_col "scale" res.fills 'qty [45 89])
+(check_col "scale" res.fills 'fee [5 5])
+(check_col "scale" (select {from: res.order_events where: (== event 'FILLED)}) 'reason [SCALED SCALED])
+(check "scale cash" res.cash 145)
 
 ;; REJECT: X fills (5506, leaving 4494); Y needs 5396 and is rejected.
-(bt_run (cfg_of 10000 1000 2 1000000 1000000 'REJECT) b_ins b_bars b_tg)
-(bt_check_identities)
-(check_col "reject" bt.fills 'qty [50])
-(check_col "reject" (select {from: bt.order_events where: (== event 'REJECTED)}) 'reason [INSUFFICIENT_CASH])
-(check "reject cash" bt.cash 4494)
+(set res (bt_run (cfg_of 10000 1000 2 1000000 1000000 'REJECT) b_ins b_bars b_tg))
+(bt_check_identities res)
+(check_col "reject" res.fills 'qty [50])
+(check_col "reject" (select {from: res.order_events where: (== event 'REJECTED)}) 'reason [INSUFFICIENT_CASH])
+(check "reject cash" res.cash 4494)
 
 ;; SCALE then the instrument limits at the fill price: Y min_qty 90 > 89.
-(bt_run (cfg_of 10000 1000 2 1000000 1000000 'SCALE)
-        (table [sym mult min_qty min_notional] (list [X Y] [1 1] [1 90] [0 0])) b_bars b_tg)
-(check_col "scale min_qty" bt.fills 'qty [45])
-(check_col "scale min_qty" (select {from: bt.order_events where: (== event 'REJECTED)}) 'reason [BELOW_MIN_QTY])
-(check "scale min_qty cash" bt.cash 5045)
+(set res (bt_run (cfg_of 10000 1000 2 1000000 1000000 'SCALE)
+                 (table [sym mult min_qty min_notional] (list [X Y] [1 1] [1 90] [0 0])) b_bars b_tg))
+(check_col "scale min_qty" res.fills 'qty [45])
+(check_col "scale min_qty" (select {from: res.order_events where: (== event 'REJECTED)}) 'reason [BELOW_MIN_QTY])
+(check "scale min_qty cash" res.cash 5045)
 
 ;; Policies are checked
 (check_raises "bad policy" (fn [] (bt_run (cfg_of 10000 0 2 0 0 'MAYBE) b_ins b_bars b_tg))
@@ -114,14 +114,14 @@
                    (list (enlist T0 T1 T2 T2 T3) [V V V W W] [10 10 10 20 20] [10 10 10 20 20])))
 (set seen_v (as 'B8 []))
 (set seen_w (as 'B8 []))
-(bt_run_strategy (cfg_of 1000 0 5 1000000 1000000 'SCALE) c_ins c_bars
-                 (bt_strategy 'eligible {}
-                              (fn [ctx]
-                                (let ok (st_eligible ctx 2))
-                                (set seen_v (concat seen_v (at ok 0)))
-                                (set seen_w (concat seen_w (at ok 1)))
-                                st_hold)
-                              0Nl))
+(set res (bt_run_strategy (cfg_of 1000 0 5 1000000 1000000 'SCALE) c_ins c_bars
+                          (bt_strategy 'eligible {}
+                                       (fn [ctx]
+                                         (let ok (st_eligible ctx 2))
+                                         (set seen_v (concat seen_v (at ok 0)))
+                                         (set seen_w (concat seen_w (at ok 1)))
+                                         st_hold)
+                                       0Nl)))
 (check "eligible V" seen_v [false false true true false])
 (check "eligible W" seen_w [false false false false true])
 (check "rank ties by sym" (st_rank [D C B A] [1.0 3.0 3.0 2.0]) [B C A D])

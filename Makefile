@@ -12,7 +12,7 @@ test:
 	$(MAKE) -C workbench test
 kernel-test:
 	cd backtest && $(foreach f,1 2 4 6,$(RAYFORCE) test/fixture$(f).rfl </dev/null &&) true
-	$(MAKE) -C backtest test-oracle
+	$(MAKE) -C backtest test-oracle test-locals
 test-full:
 	$(MAKE) -C backtest test test-run
 gui:

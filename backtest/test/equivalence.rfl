@@ -14,22 +14,21 @@
 (load "strategies/trend.rfl")
 (load "strategies/xsmom.rfl")
 
-(set records (fn [] (list bt.targets bt.orders bt.order_events bt.fills bt.ledger bt.positions bt.equity)))
+(set records (fn [r] (list r.targets r.orders r.order_events r.fills r.ledger r.positions r.equity)))
 (set names ["targets" "orders" "order_events" "fills" "ledger" "positions" "equity"])
 
 ;; run is a function of no arguments that performs one run on whichever
 ;; kernel is loaded
 (set same (fn [name run]
   (load "ref/bt_ref.rfl")
-  (run)
-  (set want (records))
+  (set want (records (run)))
   (load "bt.rfl")
-  (run)
-  (set got (records))
+  (set res (run))
+  (set got (records res))
   (times [j (count want)]
     (check_tbl (format "% %" name (at names j)) (at got j) (at want j)))
-  (bt_check_identities)
-  (bt_check_limits)))
+  (bt_check_identities res)
+  (bt_check_limits res)))
 
 (set cfg_of (fn [cash0 fee_ppm start period steps wppm gppm policy]
   (dict [cash0 fee_ppm start period steps max_weight_ppm max_gross_ppm buy_policy]
@@ -77,18 +76,16 @@
 (load "bt.rfl")
 (times [p 2]
   (set policy (at [SCALE REJECT] p))
-  (bt_run_strategy (run_cfg policy) (at s12 0) (at s12 1) strategies.xsmom_view)
-  (set want (records))
-  (bt_run_strategy (run_cfg policy) (at s12 0) (at s12 1) strategies.xsmom)
-  (set got (records))
+  (set want (records (bt_run_strategy (run_cfg policy) (at s12 0) (at s12 1) strategies.xsmom_view)))
+  (set got (records (bt_run_strategy (run_cfg policy) (at s12 0) (at s12 1) strategies.xsmom)))
   (times [j (count want)]
     (check_tbl (format "xsmom features % %" policy (at names j)) (at got j) (at want j))))
 
 ;; the cases above reach the paths they are meant to
 (load "bt.rfl")
-(bt_run_strategy (run_cfg 'SCALE) (at s12 0) (at s12 1) allin)
-(check "SCALED buys occur" (> (count (select {from: bt.order_events where: (== reason 'SCALED)})) 0) true)
-(bt_run_strategy (run_cfg 'REJECT) (at s12 0) (at s12 1) allin)
-(check "REJECT runs out of cash" (> (count (select {from: bt.order_events where: (== reason 'INSUFFICIENT_CASH)})) 0) true)
+(set res (bt_run_strategy (run_cfg 'SCALE) (at s12 0) (at s12 1) allin))
+(check "SCALED buys occur" (> (count (select {from: res.order_events where: (== reason 'SCALED)})) 0) true)
+(set res (bt_run_strategy (run_cfg 'REJECT) (at s12 0) (at s12 1) allin))
+(check "REJECT runs out of cash" (> (count (select {from: res.order_events where: (== reason 'INSUFFICIENT_CASH)})) 0) true)
 
 (println "PASS equivalence")

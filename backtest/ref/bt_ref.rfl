@@ -5,7 +5,8 @@
 ;; All money, prices and quantities are fixed-point I64 (cash units, ticks,
 ;; lots). A run's whole state (configuration, inputs, positions, records) lives
 ;; in the global dictionary bt, under one level of keys (bt.cash, bt.qty,
-;; bt.fills, ...): one run per process.
+;; bt.fills, ...): one run at a time. Unlike bt.rfl it is not reentrant: it stays
+;; a plain scalar oracle. It returns bt, which has the keys of bt.rfl's result.
 ;;
 ;; Entry points:
 ;;   (bt_run cfg instruments bars targets)           targets given as data
@@ -412,4 +413,4 @@
     (bt_phase_snapshot T)
     (if (< k bt.steps)
         (do (bt_phase_decide k T) (bt_phase_fill k T))))
-  bt.equity))
+  bt))

@@ -8,8 +8,8 @@
   (dict [framework_revision snapshot_sha256 rayforce_binary_sha256 rayforce_version config_text parameter_text]
     (list "fixture" "fixture" "fixture" "fixture" (format "%" cfg)
       (dict [fixture] (list "fixture1.rfl"))))
-  (dict [fixture] (list (wb_capture)))
-  (dict [fixture] (list (wb_summary 0))))
+  (dict [fixture] (list (wb_capture res)))
+  (dict [fixture] (list (wb_summary res 0))))
 (wb_save_staged (at bundle_fixture_args 'directory)
   (dict [effective_config parameters snapshot cash_scale instruments]
     (list cfg

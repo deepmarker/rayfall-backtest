@@ -1,0 +1,77 @@
+;; Fixture 7: runs are independent values. Several runs in one process, whatever
+;; the order, and a run started in the middle of another, leave each other's
+;; records untouched, so nothing in the kernel stands between them and a pmap
+;; that really runs in parallel. Today pmap is a sequential alias of map
+;; (rayforce#948); the test keeps it so that it exercises the real thing the day
+;; that changes. Together with `make test-locals`, which rejects any set inside
+;; a kernel function.
+;; Run from backtest:  rayforce test/fixture7.rfl
+
+(load "bt.rfl")
+(load "report.rfl")
+(load "test/assert.rfl")
+(load "strategies/buyhold.rfl")
+(load "strategies/trend.rfl")
+(load "strategies/xsmom.rfl")
+
+(set D_dir "data/binance-spot12-1d-2023-10_2026-09/")
+(set ins (read-csv [SYM I64 I64 I64 STR STR] (concat D_dir "instruments.csv")))
+(set bars (read-csv [TIMESTAMP SYM I64 I64 I64 I64 I64] (concat D_dir "bars.csv")))
+(set cfg_of (fn [policy cash0]
+  (dict [cash0 fee_ppm start period steps max_weight_ppm max_gross_ppm buy_policy]
+        (list cash0 1000 2023.10.01D00:00:00.000 1D 1096 400000 1000000 policy))))
+(set record_names [targets orders order_events fills ledger positions equity])
+
+(set same_run (fn [name got want]
+  (times [j (count record_names)]
+    (let c (at record_names j))
+    (check_tbl (format "% %" name c) (at got c) (at want c)))
+  (check (format "% cash" name) (at got 'cash) (at want 'cash))
+  (check (format "% qty" name) (at got 'qty) (at want 'qty))))
+
+;; ---- a sweep: different strategies, policies and capital
+(set jobs (list (list strategies.xsmom 'SCALE 10000000000000)
+                (list strategies.xsmom_view 'REJECT 10000000000000)
+                (list strategies.trend 'SCALE 5000000000000)
+                (list strategies.buyhold 'REJECT 20000000000000)))
+(set run_job (fn [job]
+  (bt_run_strategy (cfg_of (at job 1) (at job 2)) ins bars (at job 0))))
+(set one_by_one (map run_job jobs))
+(times [j (count jobs)]
+  (bt_check_identities (at one_by_one j))
+  (bt_check_limits (at one_by_one j)))
+(check "the jobs differ" (== (at (at one_by_one 0) 'cash) (at (at one_by_one 2) 'cash)) false)
+
+;; ---- each result is the same whatever ran around it, through pmap as well
+(set through_pmap (pmap run_job jobs))
+(set in_reverse (reverse (map run_job (reverse jobs))))
+(times [j (count jobs)]
+  (same_run (format "pmap %" j) (at through_pmap j) (at one_by_one j))
+  (same_run (format "reverse %" j) (at in_reverse j) (at one_by_one j)))
+
+;; ---- a finished run does not change when another starts
+(set first_cash (at (at one_by_one 0) 'cash))
+(set first_rows (count (at (at one_by_one 0) 'fills)))
+(run_job (at jobs 1))
+(check "kept cash" (at (at one_by_one 0) 'cash) first_cash)
+(check "kept rows" (count (at (at one_by_one 0) 'fills)) first_rows)
+
+;; ---- a strategy that runs a whole backtest at every decision: the outer run's
+;; ---- state must survive every one of them. Shared state would corrupt it.
+(set short_cfg (dict [cash0 fee_ppm start period steps max_weight_ppm max_gross_ppm buy_policy]
+                     (list 1000000 1000 2023.10.01D00:00:00.000 1D 5 400000 1000000 'SCALE)))
+(set inner_runs 0)
+(set nesting (fn [ctx]
+  (if (> (at ctx 'k) 0)
+      (do
+        (let inner (bt_run_strategy short_cfg ins (select {from: bars where: (< ts 2023.10.06D00:00:00.000)})
+                                    (bt_strategy 'inner {buffer: 0.98} buyhold 0Nl)))
+        (if (!= (count (at inner 'equity)) 6) (raise "inner run"))
+        (set inner_runs (+ inner_runs 1))))
+  (xsmom ctx)))
+(set nested (bt_run_strategy (cfg_of 'SCALE 10000000000000) ins bars
+                             (bt_strategy 'nested (at strategies.xsmom_view 'params) nesting 0Nl)))
+(check "the inner runs happened" inner_runs 1095)
+(same_run "nested" nested (bt_run_strategy (cfg_of 'SCALE 10000000000000) ins bars strategies.xsmom_view))
+
+(println "PASS fixture7")

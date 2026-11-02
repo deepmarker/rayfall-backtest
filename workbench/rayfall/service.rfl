@@ -8,21 +8,21 @@
 (set wb_summaries (dict (take [x] 0) (list)))
 (set wb_names [targets orders order_events fills ledger positions equity attribution])
 
-(set wb_capture (fn []
-  (bt_check_identities)
-  (bt_check_limits)
-  (let attribution (bt_attribution))
-  (bt_check_attribution attribution)
-  (dict wb_names (list bt.targets bt.orders bt.order_events bt.fills bt.ledger
-                      bt.positions bt.equity attribution))))
+(set wb_capture (fn [r]
+  (bt_check_identities r)
+  (bt_check_limits r)
+  (let attribution (bt_attribution r))
+  (bt_check_attribution r attribution)
+  (dict wb_names (list r.targets r.orders r.order_events r.fills r.ledger
+                      r.positions r.equity attribution))))
 
 ;; Keep engine-computed metrics: no financial calculations in the OCaml client.
 ;; End is one ns after the final valuation, so the half-open window includes it.
-(set wb_summary (fn [warmup]
+(set wb_summary (fn [r warmup]
   (dict [start stop warmup period periods_per_year risk_free_rate metrics assumptions]
-        (list (+ bt.start (* warmup bt.period))
-              (+ (last (at bt.equity 'ts)) 0D00:00:00.000000001)
-              warmup bt.period 365.0 0.0 (bt_metrics warmup)
+        (list (+ r.start (* warmup r.period))
+              (+ (last (at r.equity 'ts)) 0D00:00:00.000000001)
+              warmup r.period 365.0 0.0 (bt_metrics r warmup)
               (list "365 periods/year; risk-free rate 0; engine bt_metrics")))))
 
 ;; One immutable run per service; strategy names are symbol keys. Metadata keys:

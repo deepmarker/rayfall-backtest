@@ -866,6 +866,30 @@ The milestone also needs the inputs listed in its section: representative
 workload sizes (instruments, history, experiments), the hardware, and an
 acceptable iteration time.
 
+### Run state in locals (2026-11-02)
+
+Goal: independent runs, first motivated by a parallel `pmap`. That route is not
+being pursued: parallel sweeps would run as separate Rayforce processes. The kernel
+writes no global; `bt_run` and `bt_run_strategy` return the run as a dictionary, and
+every analysis function takes it. A callee cannot reach a caller's locals and a
+passed value is copy-on-write, so the phases became pure functions, returning the
+next state and row batches, and only `bt_simulate` grows the records. This replaces
+the "run state in a dictionary" design (item 1 below), whose `bt` global remains only
+in `ref/bt_ref.rfl`, kept as the scalar oracle.
+
+Also removed: `o_i` and `o_qty` (an order lives one step), and the sequential fill
+paths. `bt_ration` now only decides which buys fit, and one vector path emits the
+rows under both policies.
+
+Checks: 126 output files from 14 runs byte-identical to the previous kernel, across
+six strategies on both policies; equivalence and the oracle pass; `fixture7.rfl`
+covers independence. Single-sample `run_ms`, previous → now, on `synth-1h-100`:
+kernel 2108 → 2053, xsmomf 3096 → 3021; on `synth-1d-100`: kernel 64 → 72, hold 472
+→ 465, xsmom 1248 → 1249, trend 1235 → 1254. No material change.
+
+Open: a stateful strategy has no per-run slot, so it needs globals and cannot run in
+parallel; the bundled strategies are stateless.
+
 ### Upstream tracking
 
 Rayforce limitations found along the way are reported upstream, not worked
@@ -874,7 +898,9 @@ around locally. The local drafts live in the repository's top-level `doc/rayforc
 | Upstream | Kind | Status | Effect here |
 |---|---|---|---|
 | [#809](https://github.com/RayforceDB/rayforce/issues/809) | issue: `I64` overflow wraps silently (as in q) | open | Bounds are documented in the contracts. No local guards |
-| [#810](https://github.com/RayforceDB/rayforce/issues/810) | issue: `alter` on a `let`-local writes a global | fixed 2026-10-16 (#846: now raises) | None. Run state is global by design |
+| [#810](https://github.com/RayforceDB/rayforce/issues/810) | issue: `alter` on a `let`-local writes a global | fixed 2026-10-16 (#846: raises), then #954 | See #950 |
+| [#950](https://github.com/RayforceDB/rayforce/issues/950) | feature request: `alter` and `insert` on a local, in place | added 2026-11-02 (our PR #954), adopted 2026-11-02 | Run state moved from the global `bt` into locals; runs are values |
+| [#948](https://github.com/RayforceDB/rayforce/issues/948) | issue: `pmap` is sequential | open | The kernel is ready. Prerequisites: [upstream/rayforce-pmap-prerequisites.md](upstream/rayforce-pmap-prerequisites.md) |
 | [#811](https://github.com/RayforceDB/rayforce/pull/811) | PR: uncaught `raise` prints its value | merged 2026-10-14 | Test failure messages are invisible without it |
 | [#812](https://github.com/RayforceDB/rayforce/pull/812) | PR: multi-branch `if` | merged 2026-10-14 | The kernel's order rules depend on it |
 | [#816](https://github.com/RayforceDB/rayforce/issues/816) | issue: `select … asc:` lacks `xasc`'s already-sorted shortcut | fixed 2026-10-16 (#847) | None (performance only) |
@@ -882,7 +908,7 @@ around locally. The local drafts live in the repository's top-level `doc/rayforc
 | [#818](https://github.com/RayforceDB/rayforce/issues/818) | issue: `reverse` rejects tables | fixed 2026-10-16 (#837) | Row-order tests reverse the tables |
 | [#819](https://github.com/RayforceDB/rayforce/issues/819) | issue: `at` with a missing index returns a `LIST` | fixed 2026-10-14 (our PR #829) | Casts removed |
 | [#820](https://github.com/RayforceDB/rayforce/issues/820) | issue: comparisons and `and`/`or` on a `LIST` | fixed 2026-10-14 (our PRs #830, #831) | As #819 |
-| [#821](https://github.com/RayforceDB/rayforce/issues/821) | issue: `alter` through a dotted name copies the vector | fixed 2026-10-15 (our PR #839) | Run state is in the `bt` dictionary |
+| [#821](https://github.com/RayforceDB/rayforce/issues/821) | issue: `alter` through a dotted name copies the vector | fixed 2026-10-15 (our PR #839) | Records are amended through `rec.*` |
 | [#822](https://github.com/RayforceDB/rayforce/issues/822) | feature request: indexed `(times [i n] …)` | added 2026-10-14 (our PR #827) | Counted loops use it |
 | [#823](https://github.com/RayforceDB/rayforce/issues/823) | issue: `fold`/`map` box a typed vector up front | fixed 2026-10-15 (our PR #840) | Iterators over long ranges are usable |
 | [#869](https://github.com/RayforceDB/rayforce/issues/869) | issue: a dotted read scans every global twice | fixed 2026-10-17 (our PR [#870](https://github.com/RayforceDB/rayforce/pull/870)) | None: dotted reads cost what plain globals do |

@@ -41,7 +41,7 @@ Everything runs from `backtest/`.
 
 ```sh
 make data      # download the two daily snapshots and verify them
-make test      # fixtures 1-6, equivalence and independent accounting oracle
+make test      # fixtures 1-7, equivalence, accounting oracle, no global writes
 make test-run  # two full runs each of trend and xsmom must be byte-identical
 ./run.sh trend data/binance-spot-1d-2023-10_2026-09 out/trend
 ./run.sh xsmom data/binance-spot12-1d-2023-10_2026-09 out/xsmom
@@ -51,7 +51,7 @@ The last two commands write `out/trend/report.md` and `out/xsmom/report.md`.
 
 Requirements:
 
-- **Rayforce** `dev` at `64645998` or later (`rayforce-git` 2.10.0.r206 or
+- **Rayforce** `dev` at `5c646761` or later (`rayforce-git` 2.11.5.r181 or
   later). The `rayforce` on `PATH` is used; to pick another binary, pass
   `make test RAYFORCE=/path/to/rayforce` (or `RAYFORCE=… ./run.sh …`).
   [contracts.md](contracts.md) records the pinned build.
@@ -325,15 +325,28 @@ script or the REPL and call it directly from the backtester directory:
 (set cfg {cash0: 10000000000000 fee_ppm: 1000
           start: 2023.10.01D00:00:00.000 period: 1D steps: 1096
           max_weight_ppm: 400000 max_gross_ppm: 1000000 buy_policy: 'SCALE})
-(bt_run_strategy cfg ins bars strategies.trend)
-(bt_check_identities)
-(bt_metrics st_warmup)
+(set res (bt_run_strategy cfg ins bars strategies.trend))
+(bt_check_identities res)
+(bt_metrics res st_warmup)
 ```
 
-The run leaves its records in the global dictionary `bt`: `bt.targets`,
-`bt.orders`, `bt.order_events`, `bt.fills`, `bt.ledger`, `bt.positions` and
-`bt.equity`. They are ordinary tables: query them with `select`, as in
-`(select {from: bt.fills where: (== sym 'BTCUSDT)})`.
+A run returns a dictionary and writes no global. Its records are the keys
+`targets`, `orders`, `order_events`, `fills`, `ledger`, `positions` and `equity`.
+They are ordinary tables: query them with `select`, as in
+`(select {from: res.fills where: (== sym 'BTCUSDT)})`. The dictionary also holds
+the configuration, `syms` and `mult`, and the final state (`cash`, `qty`, ...).
+
+Because runs are values, a sweep is a `map` over configurations:
+
+```clojure
+(set runs (pmap (fn [c] (bt_run_strategy c ins bars strategies.trend)) cfgs))
+```
+
+Rayforce's `pmap` is currently a sequential alias of `map`
+([rayforce#948](https://github.com/RayforceDB/rayforce/issues/948)), so this runs
+on one core for now. [upstream/rayforce-pmap-prerequisites.md](upstream/rayforce-pmap-prerequisites.md)
+lists what a parallel one needs from the engine. For parallelism today, use several
+processes.
 
 `period` is a duration throughout the kernel and in the strategy context.
 Use a `TIMESPAN` literal or convert an integer nanosecond count explicitly
@@ -367,15 +380,21 @@ fixtures pin down the accounting.
 ### State and globals
 
 A strategy is ordinary Rayfall. It can keep state in globals between calls
-and can read any global, including the full `bt.bars` table. Nothing stops
-it from looking ahead. The `view` is the convention, and the causality test
-(below) is how a strategy proves it follows it.
+and can read any global, including the bars table if the caller keeps one in a
+global. Nothing stops it from looking ahead. The `view` is the convention, and
+the causality test (below) is how a strategy proves it follows it. The state of
+the run is out of its reach: that lives in the locals of `bt_simulate`.
+
+A strategy that writes globals ties its runs together: such a strategy cannot
+run in parallel, and two of its runs in one process share that state. The
+kernel has no slot for per-run strategy state yet; all the bundled strategies
+are stateless.
 
 If a strategy keeps state, reset it when `(at ctx 'k)` is 0. `run.rfl` runs
 the strategy and the baseline in the same process, and the fixtures run
 several strategies in one process.
 
-The `bt` dictionary and the `bt_` and `st_` prefixes belong to the kernel
+The `bt_` and `st_` prefixes belong to the kernel
 and the helpers. One run at a time per process: the kernel keeps the whole
 run (configuration, inputs, positions, records) in `bt`, under one level of
 keys, and each run starts by replacing it.
@@ -457,6 +476,8 @@ cost stress) that apply before reading anything into a number.
 | | `test/fixture4.rfl`: position limits, `SCALE` and `REJECT` buys, eligibility and ranking, the limit check, all hand-calculated |
 | | `test/fixture5.rfl`: `xsmom` on the twelve-instrument snapshot, on the view and in features mode: causality, row-order independence, every run check |
 | | `test/fixture6.rfl`: typed periods, exact nanosecond grids, long durations and timestamp records in both kernels |
+| | `test/fixture7.rfl`: independent runs: a sweep through `pmap` and in reverse order give the same records, and so does a run with a nested backtest at every decision |
+| | `make test-locals`: `bt.rfl` has no `set` inside a function |
 | | `test/equivalence.rfl`: the vectorised kernel against the scalar reference kernel on fixtures and real snapshots, and `xsmom` in features mode against the view form; all records identical |
 | | `test/oracle.py`: independent Python accounting oracle, 50 seeded scenarios with three instruments and 16 steps under the `REJECT` buy policy |
 | `make test-oracle` | Run the independent accounting oracle alone; position limits and `SCALE` have separate hand-calculated fixtures |
@@ -506,8 +527,9 @@ running the current backtester.
 | Durations | Nanosecond `TIMESPAN` values merged in [#917](https://github.com/RayforceDB/rayforce/pull/917) | Already adopted: use spans such as `1D` for periods, and `TIMESTAMP` for bar times. An integer conversion is still used for grid indices. |
 | Parallel sortedness checks on symbol keys | Lexical-rank comparison merged in [#937](https://github.com/RayforceDB/rayforce/pull/937) | Addresses the symbol-lock contention found in the [October 21 profile](audit-2026-10-21.md#frame-pointer-profiles). Those measurements describe the older build. |
 | Joins that preserve left rows unchanged | Left-column reuse merged in [#943](https://github.com/RayforceDB/rayforce/pull/943) | Avoids copying left columns for identity output mappings; joins that change the row mapping still need to gather data. |
-| Quoted mutation of locals and parameters | [#950](https://github.com/RayforceDB/rayforce/issues/950), implemented in open PR [#954](https://github.com/RayforceDB/rayforce/pull/954) | Upstream still rejects local `alter`; the PR lets `alter` and `insert` update the resolved local binding, with copy-on-write for shared values. The backtester still uses global `bt` state. |
-| Cost of writing global bindings | [#951](https://github.com/RayforceDB/rayforce/issues/951), implemented in open PR [#955](https://github.com/RayforceDB/rayforce/pull/955) | Upstream still scans the global binding array on writes. The PR indexes writes by symbol; it is independent of local mutation and does not remove dictionary traversal. |
+| Quoted mutation of locals and parameters | [#950](https://github.com/RayforceDB/rayforce/issues/950), merged in [#954](https://github.com/RayforceDB/rayforce/pull/954) | Required since the kernel moved to locals: `bt_simulate` amends its own records in place. |
+| Cost of writing global bindings | [#951](https://github.com/RayforceDB/rayforce/issues/951), merged in [#955](https://github.com/RayforceDB/rayforce/pull/955) | No effect on the kernel, which writes no global in a run. |
+| Parallel `pmap` | [#948](https://github.com/RayforceDB/rayforce/issues/948), open | The kernel is ready; the engine is not. See [upstream/rayforce-pmap-prerequisites.md](upstream/rayforce-pmap-prerequisites.md). |
 | Integer overflow | [#809](https://github.com/RayforceDB/rayforce/issues/809) remains open | Keep the fixed-point bounds in [contracts.md](contracts.md); arithmetic is not a checked-overflow guard. |
 
 The merged performance fixes do not remove the framework's own scaling
@@ -544,10 +566,13 @@ themselves establish an end-to-end speedup.
   as the same value. The symbol `null` is an ordinary symbol, not the null.
 - **`{…}` does not evaluate its values either.** `{a: x}` stores the symbol
   `x`. Build a dictionary from variables with `(dict [a b] (list x y))`.
-- **A live alias makes `alter` copy.** `(alter 'bt.v set i x)` updates in
-  place, but only while nothing else holds the vector: after `(let w bt.v)`,
-  each `alter` copies it. Index into it (`(at bt.v i)`) instead of keeping a
-  local copy across updates.
+- **Only the owner amends in place.** `(alter 'v set i x)` and
+  `(insert 't rows)` amend a local in place while nothing else holds the value.
+  A callee cannot reach its caller's locals, and a value passed to it stays held
+  by the caller, so the callee's first write copies. A table grown through a
+  helper is therefore quadratic: have the helper return rows, and insert them in
+  the function that owns the table, as `bt_simulate` does. A dictionary path
+  counts as a whole: `(let w d)` makes `(insert 'd.t rows)` copy.
 - **Loop with `(times [i n] …)`.** The body sees the index `i`, from 0 to
   n − 1, and `let` inside it rebinds the enclosing function's locals, so an
   accumulator works as in a `while` loop. Keep `while` for loops that stop
@@ -556,18 +581,10 @@ themselves establish an end-to-end speedup.
   ([rayforce#809](https://github.com/RayforceDB/rayforce/issues/809) asks
   whether Rayfall keeps that). `qty × price × mult` is the largest product in
   the kernel; contracts.md gives the bound.
-- **On upstream `dev`, `alter` cannot target a local or parameter.** It
-  raises `alter: local bindings are not supported`. The earlier bug that
-  read a local and wrote a global was closed by rejecting the operation
-  ([#810](https://github.com/RayforceDB/rayforce/issues/810)); that did not
-  add local mutation. Until [#954](https://github.com/RayforceDB/rayforce/pull/954)
-  is merged and included in your build, keep named mutable vectors in a
-  global or under a key of a global dictionary, as `bt.rfl` does. Repeated
-  functional growth of a local with `concat` creates replacement values;
-  moving state into locals alone does not make it an in-place append.
-  On the PR build, local mutation follows lexical lookup and real aliases
-  still force a copy; the change does not make every `alter` operation
-  allocation-free.
+- **`alter` and `insert` target a local only through a literal head.** Through a
+  parameter, a `let` or a computed head they act as ordinary callees and a quoted
+  target names a global. `alter` does not replace a key's value when it is an
+  atom: `(alter 's set 'k v)` raises. Merge with `(concat s (dict [k] (list v)))`.
 
 ## Adding data
 

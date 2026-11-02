@@ -58,33 +58,33 @@
 
 ;; ---- submission rules at the decision-time mark: at T0 nothing is marked
 ;; ---- yet; Y's min notional is 500 cash units (4 lots * 100 = 400 < 500)
-(bt_run_strategy tcfg tins tbars
-                 (bt_strategy 'marks {}
-                              (fn [ctx] (if (== (at ctx 'k) 0) (table [sym target] (list [X] [1]))
-                                            (== (at ctx 'k) 1) (table [sym target] (list [Y] [4]))
-                                            (table [sym target] (list [Y] [5]))))
-                              0Nl))
-(check "mark rules" (at (select {from: bt.order_events where: (== event 'REJECTED)}) 'reason)
+(set res (bt_run_strategy tcfg tins tbars
+                          (bt_strategy 'marks {}
+                                       (fn [ctx] (if (== (at ctx 'k) 0) (table [sym target] (list [X] [1]))
+                                                     (== (at ctx 'k) 1) (table [sym target] (list [Y] [4]))
+                                                     (table [sym target] (list [Y] [5]))))
+                                       0Nl)))
+(check "mark rules" (at (select {from: res.order_events where: (== event 'REJECTED)}) 'reason)
        [NO_MARK BELOW_MIN_NOTIONAL])
-(check_col "targets recorded" bt.targets 'sym [X Y Y])
-(check_col "filled" bt.fills 'qty [5])
+(check_col "targets recorded" res.targets 'sym [X Y Y])
+(check_col "filled" res.fills 'qty [5])
 
 ;; ---- the view: decisions at T see exactly the bars with ts + period <= T
 (set seen (as 'I64 []))
-(bt_run_strategy tcfg tins tbars
-                 (bt_strategy 'view {} (fn [ctx] (set seen (concat seen (count (at ctx 'view)))) st_hold) 0Nl))
+(set res (bt_run_strategy tcfg tins tbars
+                          (bt_strategy 'view {} (fn [ctx] (set seen (concat seen (count (at ctx 'view)))) st_hold) 0Nl)))
 (check "view sizes" seen [0 2 4])
 
 ;; ---- attribution explains fixture 1's equity changes exactly
 (set dir "test/fixture1/")
-(bt_run {cash0: 100000 fee_ppm: 1000 start: 2026.01.01D00:00:00.000 period: 0D01:00:00 steps: 4
-         max_weight_ppm: 1000000000 max_gross_ppm: 1000000000 buy_policy: 'REJECT}
-        (read-csv [SYM I64 I64 I64] (concat dir "instruments.csv"))
-        (read-csv [TIMESTAMP SYM I64 I64] (concat dir "bars.csv"))
-        (read-csv [TIMESTAMP SYM I64] (concat dir "targets.csv")))
-(bt_check_identities)
-(set a (bt_attribution))
-(bt_check_attribution a)
+(set res (bt_run {cash0: 100000 fee_ppm: 1000 start: 2026.01.01D00:00:00.000 period: 0D01:00:00 steps: 4
+                  max_weight_ppm: 1000000000 max_gross_ppm: 1000000000 buy_policy: 'REJECT}
+                 (read-csv [SYM I64 I64 I64] (concat dir "instruments.csv"))
+                 (read-csv [TIMESTAMP SYM I64 I64] (concat dir "bars.csv"))
+                 (read-csv [TIMESTAMP SYM I64] (concat dir "targets.csv"))))
+(bt_check_identities res)
+(set a (bt_attribution res))
+(bt_check_attribution res a)
 ;; T2: A 500 bought @103, marked 101: -1000. B flat.
 ;; T3: A 300 sold @99 from 101 (-600), 200 kept 101 -> 104 (+600): 0.
 ;;     B 100 bought @52, marked 50, x10: -2000.

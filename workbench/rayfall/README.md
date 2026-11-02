@@ -34,7 +34,8 @@ For custom producers, load `bt.rfl` and `report.rfl` from an explicitly selected
 backtester checkout and this directory's `service.rfl` by its resolved path
 in a dedicated process. The service itself performs no relative file loads.
 After each strategy finishes and passes accounting checks,
-retain `(wb_capture)` and `(wb_summary warmup_steps)`. Then call:
+retain `(wb_capture run)` and `(wb_summary run warmup_steps)`, where `run` is the
+value `bt_run_strategy` returned. Then call:
 
 ```lisp
 (wb_publish run_id metadata datasets summaries)
@@ -50,15 +51,10 @@ settings. The example is an executable registration reference.
 
 Publication is once per process. Original source-row IDs are attached once,
 before filtering/sorting, and underlying source tables remain unchanged.
-Snapshots retain table references, so subsequent engine mutation must respect
-Rayforce's copy-on-write ownership. Keep simulation and this read service in
-separate processes; do not expose a mutable global `bt` as the query dataset.
+Snapshots retain table references; a finished run is never amended. Keep
+simulation and this read service in separate processes.
 
-The service uses local `let` rebinding. Ordinary `set` writes globals on the
-installed release. [#950](https://github.com/RayforceDB/rayforce/issues/950)
-and [#954](https://github.com/RayforceDB/rayforce/pull/954) concern quoted
-`alter`/`insert` mutation targets and remain separate language-policy work;
-the service does not depend on that proposal or redefine ordinary `set`.
+The service uses local `let` rebinding. Ordinary `set` writes globals.
 
 ## Queries
 

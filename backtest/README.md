@@ -15,8 +15,8 @@ make test-run  # two full runs of each example must be byte-identical
 ./run.sh xsmom data/binance-spot12-1d-2023-10_2026-09 out/xsmom
 ```
 
-It needs Rayforce `dev` at `64645998` or later (`rayforce-git`
-2.10.0.r206 or later); [doc/contracts.md](doc/contracts.md) records the
+It needs Rayforce `dev` at `5c646761` or later (`rayforce-git`
+2.11.5.r181 or later); [doc/contracts.md](doc/contracts.md) records the
 pinned build. Bar periods use `TIMESPAN` values (`1D` for daily bars,
 `0D01:00:00` for hourly bars).
 

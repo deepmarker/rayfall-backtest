@@ -22,8 +22,10 @@ also records the binary's SHA-256, which identifies it.
 ## Kernel implementations
 
 `bt.rfl` is the kernel in use. Within each step it works on whole
-per-instrument vectors; the only loops left are over time and, under
-`REJECT`, along the buys of one step when they do not all fit in the cash.
+per-instrument vectors; the only loops left are over time and along the buys
+of one step when they do not all fit in the cash. A run writes no global:
+`bt_simulate` owns the records and the state in locals, and the phases are pure
+functions that return the next state and the rows to record.
 `ref/bt_ref.rfl` is the scalar reference kernel from milestone 4, written one
 instrument and one order at a time so that it can be checked line by line
 against the hand calculations. `test/equivalence.rfl` runs both on the
@@ -310,7 +312,7 @@ filters the history at every step, and it reads features computed once with
 whole-column operations.
 
 The view is a causality convention, not a sandbox: a strategy is ordinary
-Rayfall and can reach globals. The test suite checks causality directly.
+Rayfall and can reach globals, though not the run's state, which is local. The test suite checks causality directly.
 Perturbing every bar from day D onwards must leave all targets, orders, fills
 and equity up to D unchanged.
 
@@ -444,11 +446,12 @@ The following operations were verified on the pinned build:
 
 - `(times [i n] body…)`, with `let` in the body rebinding the function's
   locals, and `while`.
-- A global dictionary used through dotted names: `(set bt {})` resets it,
-  `(set bt.k v)` adds or replaces a key, and `bt.k` reads it; `alter`,
-  `insert` and `select … from:` work through dotted names, inside functions
-  too. `(alter 'bt.v set i x)` updates in place unless another value still
-  holds the vector.
+- A local dictionary used through dotted names: `d.k` reads a key, `(d.f x)`
+  calls one, and `alter`, `insert` and `select … from:` work through them,
+  on locals and on parameters. `(insert 'rec.t rows)` and `(alter 'v set i x)`
+  update in place unless another value holds the target or a dictionary on
+  its path; a parameter is held by its caller, so the first write copies.
+  `(concat d (dict [k] (list v)))` replaces a key.
 - `find` and `at` with missing keys, which return `0Nl`; with an index vector,
   the result keeps the vector's type and has nulls where indices are missing.
 - `reverse` on tables.
@@ -465,7 +468,8 @@ still open:
 - [rayforce#809](https://github.com/RayforceDB/rayforce/issues/809) (open):
   `I64` `+ - * sum sums` wrap silently on overflow. See *Overflow* above.
 - [rayforce#810](https://github.com/RayforceDB/rayforce/issues/810) (fixed):
-  `alter` on a `let`-local wrote a global. It now raises.
+  `alter` on a `let`-local wrote a global. It raised after #846, and amends the
+  local since #954.
 - [rayforce#811](https://github.com/RayforceDB/rayforce/pull/811),
   [#812](https://github.com/RayforceDB/rayforce/pull/812) (PRs, merged): an
   uncaught `raise` prints its message; multi-branch `if`, on which the

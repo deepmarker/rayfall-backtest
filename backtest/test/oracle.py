@@ -106,13 +106,13 @@ def check_case(seed, directory):
     code = f'''(load "bt.rfl")
 (load "report.rfl")
 (set cfg {{cash0: {cash0} fee_ppm: {ppm} start: 2026.01.01D00:00:00.000 period: 0D01:00:00 steps: {STEPS} max_weight_ppm: 1000000000000 max_gross_ppm: 1000000000000 buy_policy: 'REJECT}})
-(bt_run cfg {table(['sym', 'mult', 'min_qty', 'min_notional'], instrument_rows, ['SYM', 'I64', 'I64', 'I64'])}
+(set res (bt_run cfg {table(['sym', 'mult', 'min_qty', 'min_notional'], instrument_rows, ['SYM', 'I64', 'I64', 'I64'])}
 {table(['ts', 'sym', 'o', 'c'], bar_rows, ['TIMESTAMP', 'SYM', 'I64', 'I64'])}
-{table(['ts', 'sym', 'target'], target_rows, ['TIMESTAMP', 'SYM', 'I64'])})
-(bt_check_identities)
-(bt_check_limits)
-(bt_check_attribution (bt_attribution))
-(bt_write_outputs "{directory}/")
+{table(['ts', 'sym', 'target'], target_rows, ['TIMESTAMP', 'SYM', 'I64'])}))
+(bt_check_identities res)
+(bt_check_limits res)
+(bt_check_attribution res (bt_attribution res))
+(bt_write_outputs res "{directory}/")
 '''
     path = directory / 'case.rfl'
     path.write_text(code)

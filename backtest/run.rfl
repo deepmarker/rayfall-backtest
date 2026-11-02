@@ -21,7 +21,7 @@
 ;; Optional native workbench export, alongside the unchanged CLI report/CSVs.
 (set workbench_export (not (nil? (at args 'service))))
 (if workbench_export
-  (do (load (arg 'service)) (load (arg 'bundle_module))))
+    (do (load (arg 'service)) (load (arg 'bundle_module))))
 
 ;; ---- configuration shared by the strategy and the baseline
 (set cfg {cash0: 10000000000000         ; 100000 USDT in 1e-8 units
@@ -45,21 +45,21 @@
 ;; Run one strategy; write its outputs under out_dir/name/ and return
 ;; {name params metrics attribution}, attribution being per instrument.
 (set run_one (fn [s]
-  (bt_run_strategy cfg instruments bars s)
-  (bt_check_identities)
-  (bt_check_limits)
-  (let a (bt_attribution))
-  (bt_check_attribution a)
+  (let r (bt_run_strategy cfg instruments bars s))
+  (bt_check_identities r)
+  (bt_check_limits r)
+  (let a (bt_attribution r))
+  (bt_check_attribution r a)
   (let dir (format "%%/" out_dir (at s 'name)))   ; created by run.sh
-  (bt_write_outputs dir)
+  (bt_write_outputs r dir)
   (.csv.write a (concat dir "attribution.csv"))
-  (let from_ts (+ bt.start (* st_warmup bt.period)))
+  (let from_ts (+ r.start (* st_warmup r.period)))
   (let result (dict [name params metrics attribution]
-        (list (at s 'name) (at s 'params) (bt_metrics st_warmup) (bt_attribution_by_sym a from_ts))))
+                    (list (at s 'name) (at s 'params) (bt_metrics r st_warmup) (bt_attribution_by_sym a from_ts))))
   (if workbench_export
-    (dict [name params metrics attribution dataset summary]
-      (concat (value result) (list (wb_capture) (wb_summary st_warmup))))
-    result)))
+      (dict [name params metrics attribution dataset summary]
+            (concat (value result) (list (wb_capture r) (wb_summary r st_warmup))))
+      result)))
 
 (set main (run_one main_strategy))
 (set base (run_one strategies.buyhold))
@@ -126,7 +126,7 @@ execution is a model: it has no intrabar detail, slippage or liquidity limit.
 |---|---|---|
 "
                      (at main 'name) (arg 'data) (arg 'snapshot_sha) (arg 'rev) (at build 'version) (arg 'rayforce_sha)
-                     (at m 'days) st_warmup (as 'DATE (+ bt.start (* bt.steps bt.period))) (/ (at cfg 'fee_ppm) 100)
+                     (at m 'days) st_warmup (as 'DATE (+ (at cfg 'start) (* (at cfg 'steps) (at cfg 'period)))) (/ (at cfg 'fee_ppm) 100)
                      (/ (at cfg 'max_weight_ppm) 10000) "%" (/ (at cfg 'max_gross_ppm) 10000) "%" (at cfg 'buy_policy)
                      (at main 'name))
                     (concat (str-join (list
@@ -173,26 +173,26 @@ not modelled.
 (println (format "wrote %report.md" out_dir))
 
 (if workbench_export
-  (do
-    (let names (as 'SYM (list (at main 'name) (at base 'name))))
-    (let parameters (dict names (list (at main 'params) (at base 'params))))
-    (wb_publish (arg 'run_id)
-      (dict [framework_revision snapshot_sha256 rayforce_binary_sha256 rayforce_version config_text parameter_text]
-        (list (arg 'rev) (arg 'snapshot_sha) (arg 'rayforce_sha) (at build 'version)
-          (format "%" cfg)
-          (dict names (list (format "%" (at main 'params)) (format "%" (at base 'params))))))
-      (dict names (list (at main 'dataset) (at base 'dataset)))
-      (dict names (list (at main 'summary) (at base 'summary))))
-    (let instrument_metadata
-      (map (fn [i]
-        (dict [symbol multiplier tick_decimal lot_decimal]
-          (list (format "%" (at (at instruments 'sym) i)) (at (at instruments 'mult) i)
-                (at (at instruments 'tick) i) (at (at instruments 'lot) i))))
-        (til (count instruments))))
-    (wb_save_staged (arg 'directory)
-      (dict [effective_config parameters snapshot cash_scale instruments]
-        (list cfg parameters
-          (dict [directory sha256sums_sha256] (list (arg 'data) (arg 'snapshot_sha)))
-          (dict [currency cash_unit_decimal] (list "USDT" "0.00000001"))
-          instrument_metadata))))
-  null)
+    (do
+      (let names (as 'SYM (list (at main 'name) (at base 'name))))
+      (let parameters (dict names (list (at main 'params) (at base 'params))))
+      (wb_publish (arg 'run_id)
+                  (dict [framework_revision snapshot_sha256 rayforce_binary_sha256 rayforce_version config_text parameter_text]
+                        (list (arg 'rev) (arg 'snapshot_sha) (arg 'rayforce_sha) (at build 'version)
+                              (format "%" cfg)
+                              (dict names (list (format "%" (at main 'params)) (format "%" (at base 'params))))))
+                  (dict names (list (at main 'dataset) (at base 'dataset)))
+                  (dict names (list (at main 'summary) (at base 'summary))))
+      (let instrument_metadata
+        (map (fn [i]
+               (dict [symbol multiplier tick_decimal lot_decimal]
+                     (list (format "%" (at (at instruments 'sym) i)) (at (at instruments 'mult) i)
+                           (at (at instruments 'tick) i) (at (at instruments 'lot) i))))
+             (til (count instruments))))
+      (wb_save_staged (arg 'directory)
+                      (dict [effective_config parameters snapshot cash_scale instruments]
+                            (list cfg parameters
+                                  (dict [directory sha256sums_sha256] (list (arg 'data) (arg 'snapshot_sha)))
+                                  (dict [currency cash_unit_decimal] (list "USDT" "0.00000001"))
+                                  instrument_metadata))))
+    null)
